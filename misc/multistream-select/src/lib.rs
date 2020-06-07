@@ -1,5 +1,5 @@
 mod protocol;
-
+mod listener_select;
 use futures_util::io::{AsyncReadExt, AsyncWriteExt};
 use protocol::GetVarintLen;
 
@@ -53,5 +53,8 @@ fn server_test() {
         let mut read_buf = vec![0u8; len as usize];
         connec.read_exact(&mut read_buf).await.unwrap();
         println!("buf_len:{},buf:{:?}", len, read_buf);
+        len_buf[0] = read_buf.len() as u8;
+        let res = connec.write_all(&len_buf).await;
+        let res = connec.write_all(&read_buf).await;
     });
 }
