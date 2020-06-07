@@ -1,0 +1,14 @@
+[package]
+name = "yaanhyy-multistream-select"
+version = "0.1.0"
+authors = ["hyy"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-std = "1.0"
+futures = "0.3.5"
+futures-util = "0.3.5"
+secio = { package="yaanhyy-secio", rev = 'd0d4724978142ddf015da0e9bf91c4d251a4edfb', git = "https://yaanhyy:yaanhyy%269983131@github.com/yaanhyy/yaanhyy-secio.git"}
+yamux = { package="yaanhyy-yamux", rev = 'e83b6996437035159ef4e20671ab94bd895b75a6', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
