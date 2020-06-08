@@ -6,6 +6,13 @@ use secio::config::SecioConfig;
 use secio::handshake::handshake;
 use secio::identity::Keypair;
 
+pub async fn listener_secio_select_proto() ->Vec<String> {
+    let mut match_proto = Vec::new();
+    match_proto.push("no proto".to_string());
+    match_proto
+}
+
+
 pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> Vec<String>
  where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
 {
@@ -68,8 +75,45 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
             let mut res = handshake(connec.clone(), config).await;
             match res {
                 Ok((mut secure_conn_writer, mut secure_conn_reader) ) => {
-                    let data = secure_conn_reader.read().await.unwrap();
-                    println!("secure data:{:?}", data);
+                    let mut data = secure_conn_reader.read().await.unwrap();
+
+                    let mut varint_buf: Vec<u8> = Vec::new();
+                    loop {
+                        let item = data.remove(0);
+
+                        if item & 0x80 == 0 {
+                            varint_buf.push(item);
+                            break;
+                        } else {
+                            varint_buf.push(item& 0x7f);
+                        }
+                    }
+                    len = GetVarintLen(varint_buf);
+                    let mut rest: Vec<_> = data.drain((len as usize)..).collect();
+                    let proto = std::str::from_utf8(&data).unwrap().to_string();
+                    println!("rec proto:{:?}", proto);
+
+                    let mut varint_buf: Vec<u8> = Vec::new();
+                    loop {
+                        let item = rest.remove(0);
+
+                        if item & 0x80 == 0 {
+                            varint_buf.push(item);
+                            break;
+                        } else {
+                            varint_buf.push(item& 0x7f);
+                        }
+                    }
+                    len = GetVarintLen(varint_buf);
+                    let mut tail: Vec<_> = rest.drain((len as usize)..).collect();
+                    let proto = std::str::from_utf8(&rest).unwrap().to_string();
+                    println!("rec proto:{:?}", proto);
+                    len_buf[0] = rest.len() as u8;
+                    let res = secure_conn_writer.send(& mut len_buf.to_vec()).await;
+                    let res = secure_conn_writer.send(& mut rest).await;
+                    let mut data = secure_conn_reader.read().await.unwrap();
+                    println!("buf: {:?}", data);
+
                 },
                 Err(e) => println!("res:{:?}", e),
             }
