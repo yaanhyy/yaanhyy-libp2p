@@ -6,10 +6,17 @@ use secio::config::SecioConfig;
 use secio::handshake::handshake;
 use secio::identity::Keypair;
 use futures::future::Future;
+use futures::{future, select, join};
 use futures::{channel::{mpsc, oneshot}};
 use yamux::session::{SecioSessionWriter, SecioSessionReader};
 use yamux::Config;
-use yamux::session::Mode;
+use yamux::frame::Frame;
+use yamux::session::{Mode, ControlCommand, StreamCommand};
+use yamux::session::{get_stream, open_stream};
+use futures::prelude::*;
+use async_std::task;
+use std::time::Duration;
+use utils::init_log;
 
 pub async fn listener_secio_select_proto() ->Vec<String> {
     let mut match_proto = Vec::new();
@@ -17,6 +24,50 @@ pub async fn listener_secio_select_proto() ->Vec<String> {
     match_proto
 }
 
+
+pub async fn period_send( sender: mpsc::Sender<ControlCommand>) {
+    let res = open_stream(sender).await;
+    let mut index = 0;
+    if let Ok(mut stream) = res {
+        let mut stream_clone = stream.clone();
+        let mut data_receiver = stream.data_receiver.unwrap();
+        task::spawn(async move {
+            loop {
+                let buf = data_receiver.next().await;
+                println!("receive:{:?}", buf);
+            }
+        });
+        loop {
+            index +=1;
+            let frame = Frame::data(stream_clone.id(), format!("love and peace:{}", index).into_bytes()).unwrap();
+            stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
+       //     task::sleep(Duration::from_secs(10)).await;
+
+        }
+    } else {
+        println!("fail open stream");
+    }
+}
+
+pub async fn remote_stream_deal(mut sender: mpsc::Sender<ControlCommand>) {
+    loop {
+        let res = get_stream(1, sender.clone()).await;
+        if let Ok(stream)= res{
+            let mut data_receiver = stream.data_receiver.unwrap();
+            task::spawn(async move {
+                loop {
+                    let buf = data_receiver.next().await;
+                    println!("remote send receive:{:?}", buf);
+                }
+            });
+            break;
+        } else {
+            //println!("get_stream fail :{:?}", res);
+        }
+        task::sleep(Duration::from_secs(10)).await;
+
+    }
+}
 
 pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> Vec<String>
  where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
@@ -116,27 +167,17 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
                     len_buf[0] = rest.len() as u8;
                     let res = secure_conn_writer.send(& mut len_buf.to_vec()).await;
                     let res = secure_conn_writer.send(& mut rest).await;
-                    let mut data = secure_conn_reader.read().await.unwrap();
-                    println!("buf: {:?}", data);
+//                    let mut data = secure_conn_reader.read().await.unwrap();
+//                    println!("buf: {:?}", data);
                     let (control_sender, control_receiver) = mpsc::channel(10);
                     let (stream_sender, stream_receiver) = mpsc::channel(10);
-                    let mut session_reader = SecioSessionReader::new(secure_conn_reader, Config::default(), Mode::Client,  stream_sender);
+                    let mut session_reader = SecioSessionReader::new(secure_conn_reader, Config::default(), Mode::Server,  stream_sender);
                     let mut session_writer = SecioSessionWriter::new(secure_conn_writer, stream_receiver);
-                    let res = session_reader.open_secio_stream().await;
-
-
-                    if let Ok(id) = res {
-                        session_writer.data_frame_send(id , "hello yamux".to_string().into_bytes()).await;
-                        let mut msg = "ok".to_string();
-                        println!("open_stream success");
-                    } else {
-                        println!("open_stream fail" );
-                    }
-                    // remote_frame_future.await;
-                    //    let receive_local_frame_future = session.send_frame();
-                    //   let broker = async_std::task::spawn(receive_local_frame_future);
-
-                    session_reader.receive_loop(control_receiver).await;
+                    let deal_remote_stream = remote_stream_deal(control_sender.clone());
+                 //   let period_send = period_send( control_sender);
+                    let receive_process = session_reader.receive_loop( control_receiver);
+                    let send_process = session_writer.send_process();
+                    join!{receive_process, send_process,  deal_remote_stream};//period_send,
 
 
                 },
@@ -159,6 +200,7 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
 
 #[test]
 fn server_test() {
+    init_log("debug");
     async_std::task::block_on(async move {
         let listener = async_std::net::TcpListener::bind("127.0.0.1:5679").await.unwrap();
         let mut connec = listener.accept().await.unwrap().0;
