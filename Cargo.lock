@@ -1571,7 +1571,7 @@ name = "yaanhyy-libp2p"
 version = "0.1.0"
 dependencies = [
  "yaanhyy-multistream-select",
- "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=d0d4724978142ddf015da0e9bf91c4d251a4edfb)",
+ "yaanhyy-secio",
  "yaanhyy-yamux",
 ]
 
@@ -1582,7 +1582,7 @@ dependencies = [
  "async-std",
  "futures 0.3.5",
  "futures-util",
- "yaanhyy-secio 0.1.0 (git+https://yaanhyy:yaanhyy%269983131@github.com/yaanhyy/yaanhyy-secio.git?rev=d0d4724978142ddf015da0e9bf91c4d251a4edfb)",
+ "yaanhyy-secio",
  "yaanhyy-yamux",
 ]
 
@@ -1590,37 +1590,6 @@ dependencies = [
 name = "yaanhyy-secio"
 version = "0.1.0"
 source = "git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=d0d4724978142ddf015da0e9bf91c4d251a4edfb#d0d4724978142ddf015da0e9bf91c4d251a4edfb"
-dependencies = [
- "aes-ctr",
- "asn1_der",
- "bs58",
- "ctr",
- "ed25519-dalek",
- "fnv",
- "futures 0.3.5",
- "futures-util",
- "grpcio",
- "hmac",
- "lazy_static",
- "libsecp256k1",
- "log",
- "multihash",
- "prost",
- "prost-build",
- "protobuf",
- "protoc-grpcio",
- "rand",
- "ring",
- "sha2",
- "thiserror",
- "twofish",
- "zeroize",
-]
-
-[[package]]
-name = "yaanhyy-secio"
-version = "0.1.0"
-source = "git+https://yaanhyy:yaanhyy%269983131@github.com/yaanhyy/yaanhyy-secio.git?rev=d0d4724978142ddf015da0e9bf91c4d251a4edfb#d0d4724978142ddf015da0e9bf91c4d251a4edfb"
 dependencies = [
  "aes-ctr",
  "asn1_der",
@@ -1658,7 +1627,7 @@ dependencies = [
  "log",
  "pin-utils",
  "rand",
- "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=d0d4724978142ddf015da0e9bf91c4d251a4edfb)",
+ "yaanhyy-secio",
 ]
 
 [[package]]

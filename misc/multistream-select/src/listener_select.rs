@@ -5,6 +5,11 @@ use super::GetVarintLen;
 use secio::config::SecioConfig;
 use secio::handshake::handshake;
 use secio::identity::Keypair;
+use futures::future::Future;
+use futures::{channel::{mpsc, oneshot}};
+use yamux::session::{SecioSessionWriter, SecioSessionReader};
+use yamux::Config;
+use yamux::session::Mode;
 
 pub async fn listener_secio_select_proto() ->Vec<String> {
     let mut match_proto = Vec::new();
@@ -113,6 +118,26 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
                     let res = secure_conn_writer.send(& mut rest).await;
                     let mut data = secure_conn_reader.read().await.unwrap();
                     println!("buf: {:?}", data);
+                    let (control_sender, control_receiver) = mpsc::channel(10);
+                    let (stream_sender, stream_receiver) = mpsc::channel(10);
+                    let mut session_reader = SecioSessionReader::new(secure_conn_reader, Config::default(), Mode::Client,  stream_sender);
+                    let mut session_writer = SecioSessionWriter::new(secure_conn_writer, stream_receiver);
+                    let res = session_reader.open_secio_stream().await;
+
+
+                    if let Ok(id) = res {
+                        session_writer.data_frame_send(id , "hello yamux".to_string().into_bytes()).await;
+                        let mut msg = "ok".to_string();
+                        println!("open_stream success");
+                    } else {
+                        println!("open_stream fail" );
+                    }
+                    // remote_frame_future.await;
+                    //    let receive_local_frame_future = session.send_frame();
+                    //   let broker = async_std::task::spawn(receive_local_frame_future);
+
+                    session_reader.receive_loop(control_receiver).await;
+
 
                 },
                 Err(e) => println!("res:{:?}", e),
