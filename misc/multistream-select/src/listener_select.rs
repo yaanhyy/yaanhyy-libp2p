@@ -49,10 +49,20 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>) {
     }
 }
 
-pub async fn remote_stream_deal(mut sender: mpsc::Sender<ControlCommand>) {
+
+
+pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, mut sender: mpsc::Sender<ControlCommand>) {
     loop {
         let res = get_stream(1, sender.clone()).await;
-        if let Ok(stream)= res{
+        if let Ok(mut stream)= res{
+            if !stream.cache.is_empty() {
+                let data: Vec<u8> = stream.cache.drain(4..).collect();
+                let mut len_buf = [0u8;4];
+                len_buf.copy_from_slice(stream.cache.as_slice());
+                let len = u32::from_be_bytes(len_buf);
+                println!("chache len:{}", len);
+
+            }
             let mut data_receiver = stream.data_receiver.unwrap();
             task::spawn(async move {
                 loop {
@@ -64,7 +74,7 @@ pub async fn remote_stream_deal(mut sender: mpsc::Sender<ControlCommand>) {
         } else {
             //println!("get_stream fail :{:?}", res);
         }
-        task::sleep(Duration::from_secs(10)).await;
+        task::sleep(Duration::from_secs(1)).await;
 
     }
 }
@@ -173,7 +183,7 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
                     let (stream_sender, stream_receiver) = mpsc::channel(10);
                     let mut session_reader = SecioSessionReader::new(secure_conn_reader, Config::default(), Mode::Server,  stream_sender);
                     let mut session_writer = SecioSessionWriter::new(secure_conn_writer, stream_receiver);
-                    let deal_remote_stream = remote_stream_deal(control_sender.clone());
+                    let deal_remote_stream = remote_stream_deal(session_reader.stream_sender.clone(),control_sender.clone());
                  //   let period_send = period_send( control_sender);
                     let receive_process = session_reader.receive_loop( control_receiver);
                     let send_process = session_writer.send_process();
