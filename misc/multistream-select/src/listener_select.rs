@@ -56,17 +56,33 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
         let res = get_stream(1, sender.clone()).await;
         if let Ok(mut stream)= res{
             if !stream.cache.is_empty() {
-                let data: Vec<u8> = stream.cache.drain(4..).collect();
+                let mut  data: Vec<u8> = stream.cache.drain(4..).collect();
                 let mut len_buf = [0u8;4];
                 len_buf.copy_from_slice(stream.cache.as_slice());
                 let len = u32::from_be_bytes(len_buf);
-                println!("chache len:{}", len);
 
+                let ping_proto: Vec<u8> = data.drain(20..).collect();
+                let out = std::str::from_utf8(&data.clone()).unwrap().to_string();
+                let out1 = std::str::from_utf8(&ping_proto.clone()).unwrap().to_string();
+                println!("chache len:{}, buf:{:?},ping:{:?}", len, out, out1);
+
+
+                let len:u8 = protocol::MSG_MULTISTREAM_1_0.len() as u8;
+                data.clear();
+                data.push(len);
+                data.append(& mut protocol::MSG_MULTISTREAM_1_0.to_vec()) ;
+
+                let mut stream_clone = stream.clone();
+                let frame = Frame::data(stream_clone.id(), data).unwrap();
+                stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
+                let frame = Frame::data(stream_clone.id(), ping_proto).unwrap();
+                stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
             }
             let mut data_receiver = stream.data_receiver.unwrap();
             task::spawn(async move {
                 loop {
                     let buf = data_receiver.next().await;
+                   // let buf = std::str::from_utf8(&buf.unwrap()).unwrap().to_string();
                     println!("remote send receive:{:?}", buf);
                 }
             });
