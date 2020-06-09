@@ -5,6 +5,7 @@ use super::GetVarintLen;
 use secio::config::SecioConfig;
 use secio::handshake::handshake;
 use secio::identity::Keypair;
+use secio::codec::{SecureHalfConnWrite, SecureHalfConnRead};
 use futures::future::Future;
 use futures::{future, select, join};
 use futures::{channel::{mpsc, oneshot}};
@@ -17,6 +18,8 @@ use futures::prelude::*;
 use async_std::task;
 use std::time::Duration;
 use utils::init_log;
+use std::sync::{Arc};
+use async_std::sync::Mutex;
 
 pub async fn listener_secio_select_proto() ->Vec<String> {
     let mut match_proto = Vec::new();
@@ -95,7 +98,85 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
     }
 }
 
-pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> Vec<String>
+pub fn get_len_buf_from_buf(mut input: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+    let mut varint_buf: Vec<u8> = Vec::new();
+    loop {
+        let item = input.remove(0);
+
+        if item & 0x80 == 0 {
+            varint_buf.push(item);
+            break;
+        } else {
+            varint_buf.push(item& 0x7f);
+        }
+    }
+    (input, varint_buf)
+}
+
+pub async fn listener_select_proto_secio<R, W>(mut reader: Arc<Mutex<SecureHalfConnRead<R>>>, mut writer: Arc<Mutex<SecureHalfConnWrite<W>>>, protocols: Vec<String>) -> Result<Vec<String>, String>
+where R: AsyncRead + Send + Unpin + 'static, W: AsyncWrite + Send + Unpin + 'static
+{
+    let protos: Vec<String> = Vec::new();
+    let mut data = (*reader.lock().await).read().await.unwrap();
+    let (mut data, varint_buf) = get_len_buf_from_buf(data);
+    let mut len = GetVarintLen(varint_buf);
+    let mut rest: Vec<_> = data.drain((len as usize)..).collect();
+    let proto = std::str::from_utf8(&data).unwrap().to_string();
+    println!("secio rec proto:{:?}", proto);
+
+
+    if rest.is_empty() {
+        data = (*reader.lock().await).read().await.unwrap();
+    } else {
+        data = rest;
+    }
+    let (mut data, varint_buf) = get_len_buf_from_buf(data);
+    len = GetVarintLen(varint_buf);
+    let mut tail: Vec<_> = data.drain((len as usize)..).collect();
+    let proto = std::str::from_utf8(&data).unwrap().to_string();
+    println!("secio rec proto:{:?}", proto);
+    let mut len_buf = [0u8, 1];
+    len_buf[0] = data.len() as u8;
+    let res = (*writer.lock().await).send(& mut len_buf.to_vec()).await;
+    let res = (*writer.lock().await).send(& mut data).await;
+    Ok(protos)
+}
+
+pub async fn upgrade_secio_protocol<S>(mut connec: S)
+ where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
+{
+    let key1 = Keypair::generate_ed25519();
+    let mut config = SecioConfig::new(key1);
+    let mut res = handshake(connec.clone(), config).await;
+    println!("after handshake");
+    match res {
+        Ok((mut secure_conn_writer, mut secure_conn_reader) ) => {
+            let (control_sender, control_receiver) = mpsc::channel(10);
+            let (stream_sender, stream_receiver) = mpsc::channel(10);
+
+            let mut session_reader = SecioSessionReader::new(secure_conn_reader, Config::default(), Mode::Server,  stream_sender);
+            let mut session_writer = SecioSessionWriter::new(secure_conn_writer, stream_receiver);
+            let arc_reader = session_reader.socket.clone();
+            let arc_writer = session_writer.socket.clone();
+            listener_select_proto_secio(arc_reader, arc_writer, vec!["/yamux/1.0.0\n".to_string()]).await;
+//                    let mut data = secure_conn_reader.read().await.unwrap();
+//                    println!("buf: {:?}", data);
+
+
+            let deal_remote_stream = remote_stream_deal(session_reader.stream_sender.clone(),control_sender.clone());
+            //   let period_send = period_send( control_sender);
+            let receive_process = session_reader.receive_loop( control_receiver);
+            let send_process = session_writer.send_process();
+            join!{receive_process, send_process,  deal_remote_stream};//period_send,
+
+
+        },
+        Err(e) => println!("handshake res:{:?}", e),
+    }
+}
+
+
+pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> Result<Vec<String>, String>
  where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
 {
     let mut match_proto = Vec::new();
@@ -115,6 +196,10 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
 
     let mut read_buf = vec![0u8; len as usize];
     connec.read_exact(&mut read_buf).await.unwrap();
+    let proto_name = std::str::from_utf8(&read_buf.to_owned()).unwrap().to_string();
+    if !read_buf.eq(&protocol::MSG_MULTISTREAM_1_0.to_vec()) {
+        return Err("MULTISTREAM not match".to_string());
+    }
     println!("buf_len:{},buf:{:?}", len, read_buf);
     len_buf[0] = protocol::MSG_MULTISTREAM_1_0.len() as u8;
     let res = connec.write_all(&len_buf).await;
@@ -124,10 +209,8 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
         Err(e) => println!("write err:{:?}", e),
     }
 
-
     //negotiate protocol
-
-
+    // fix me! how quit the negotiate when not match any protocol?
     loop {
         //receive remote proto
         let mut varint_buf: Vec<u8> = Vec::new();
@@ -151,77 +234,15 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
             let res = connec.write_all(&len_buf).await;
             let res = connec.write_all(&read_buf).await;
             match_proto.push(proto_name);
-
-            let key1 = Keypair::generate_ed25519();
-            let mut config = SecioConfig::new(key1);
-            let mut res = handshake(connec.clone(), config).await;
-            match res {
-                Ok((mut secure_conn_writer, mut secure_conn_reader) ) => {
-                    let mut data = secure_conn_reader.read().await.unwrap();
-
-                    let mut varint_buf: Vec<u8> = Vec::new();
-                    loop {
-                        let item = data.remove(0);
-
-                        if item & 0x80 == 0 {
-                            varint_buf.push(item);
-                            break;
-                        } else {
-                            varint_buf.push(item& 0x7f);
-                        }
-                    }
-                    len = GetVarintLen(varint_buf);
-                    let mut rest: Vec<_> = data.drain((len as usize)..).collect();
-                    let proto = std::str::from_utf8(&data).unwrap().to_string();
-                    println!("rec proto:{:?}", proto);
-
-                    let mut varint_buf: Vec<u8> = Vec::new();
-                    loop {
-                        let item = rest.remove(0);
-
-                        if item & 0x80 == 0 {
-                            varint_buf.push(item);
-                            break;
-                        } else {
-                            varint_buf.push(item& 0x7f);
-                        }
-                    }
-                    len = GetVarintLen(varint_buf);
-                    let mut tail: Vec<_> = rest.drain((len as usize)..).collect();
-                    let proto = std::str::from_utf8(&rest).unwrap().to_string();
-                    println!("rec proto:{:?}", proto);
-                    len_buf[0] = rest.len() as u8;
-                    let res = secure_conn_writer.send(& mut len_buf.to_vec()).await;
-                    let res = secure_conn_writer.send(& mut rest).await;
-//                    let mut data = secure_conn_reader.read().await.unwrap();
-//                    println!("buf: {:?}", data);
-                    let (control_sender, control_receiver) = mpsc::channel(10);
-                    let (stream_sender, stream_receiver) = mpsc::channel(10);
-                    let mut session_reader = SecioSessionReader::new(secure_conn_reader, Config::default(), Mode::Server,  stream_sender);
-                    let mut session_writer = SecioSessionWriter::new(secure_conn_writer, stream_receiver);
-                    let deal_remote_stream = remote_stream_deal(session_reader.stream_sender.clone(),control_sender.clone());
-                 //   let period_send = period_send( control_sender);
-                    let receive_process = session_reader.receive_loop( control_receiver);
-                    let send_process = session_writer.send_process();
-                    join!{receive_process, send_process,  deal_remote_stream};//period_send,
-
-
-                },
-                Err(e) => println!("res:{:?}", e),
-            }
             break;
-        } //else if  proto_name.eq("/secio/1.0.0\n") {
-
-        //}
+        }
         else {
             len_buf[0] = 3;
             let res = connec.write_all(&len_buf).await;
             let res = connec.write_all(&[0x6e, 0x61, 0xa]).await;
         }
     }
-
-
-    match_proto
+    Ok(match_proto)
 }
 
 #[test]
@@ -231,7 +252,14 @@ fn server_test() {
         let listener = async_std::net::TcpListener::bind("127.0.0.1:5679").await.unwrap();
         let mut connec = listener.accept().await.unwrap().0;
         let res = listener_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string(), "/proto2\n".to_string()]).await;
-        println!("res:{:?}", res);
+        match res {
+            Ok(protos) => {
+                if protos.contains(&("/secio/1.0.0\n".to_string())) {
+                    upgrade_secio_protocol(connec.clone()).await;
+                }
+            },
+            Err(e) => println!("err:{}","not match protocol".to_string()),
+        }
         loop {
             let mut read_buf = vec![0u8; 10];
             let res = connec.read_exact(&mut read_buf).await;

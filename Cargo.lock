@@ -1717,7 +1717,7 @@ dependencies = [
 [[package]]
 name = "yaanhyy-yamux"
 version = "0.1.0"
-source = "git+https://github.com/yaanhyy/yaanhyy-yamux.git?rev=878db3581ae5a8f0914ee45c23e30c4cd678dcca#878db3581ae5a8f0914ee45c23e30c4cd678dcca"
+source = "git+https://github.com/yaanhyy/yaanhyy-yamux.git?rev=c7ba1e4d6890fc0ebb00f60635dcef1f7180c74e#c7ba1e4d6890fc0ebb00f60635dcef1f7180c74e"
 dependencies = [
  "async-std",
  "futures 0.3.5",
