@@ -136,7 +136,7 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
     if let Ok(mut stream)= res{
         loop {
             let mut stream = stream.next().await.unwrap();
-
+            stream_protocol_flag = false;
             if !stream.cache.is_empty() {
                 let mut  data: Vec<u8> = stream.cache.drain(4..).collect();
                 let mut len_buf = [0u8;4];
@@ -146,7 +146,7 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
                 let ping_proto: Vec<u8> = data.drain(20..).collect();
                 let out = std::str::from_utf8(&data.clone()).unwrap().to_string();
                 let out1 = std::str::from_utf8(&ping_proto.clone()).unwrap().to_string();
-                println!("chache len:{}, buf:{:?},ping:{:?}", len, out, out1);
+                println!("cache len:{}, buf:{:?},ping:{:?}", len, out, out1);
 
 
                 let len:u8 = MSG_MULTISTREAM_1_0.len() as u8;
@@ -170,6 +170,7 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
                 //  loop {
                 let mut buf = None;
                 if !stream_protocol_flag {
+                    stream_protocol_flag = true;
                     buf = data_receiver.next().await;
                     let (mut data, varint_buf) = split_length_from_package(buf.clone().unwrap());
                     let mut len = get_varint_len(varint_buf);
@@ -184,10 +185,10 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
                     let frame = Frame::data(stream_clone.id(), ping_proto).unwrap();
                     stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
                     // let buf = std::str::from_utf8(&buf.unwrap()).unwrap().to_string();
-                    println!("remote send receive:{:?}", buf);
+                    println!("remote send receive2:{:?}", buf);
                 }
                 buf = data_receiver.next().await;
-                println!("remote send receive1:{:?}", buf.clone());
+                println!("remote send receive3:{:?}", buf.clone());
 
                 buf = data_receiver.next().await;
                 let frame = Frame::data(stream_spawn.id(), buf.unwrap()).unwrap();
