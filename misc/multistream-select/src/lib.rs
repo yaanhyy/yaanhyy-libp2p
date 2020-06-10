@@ -1,11 +1,8 @@
 mod protocol;
 mod listener_select;
+mod dialer_select;
 use futures_util::io::{AsyncReadExt, AsyncWriteExt};
-use protocol::GetVarintLen;
-
-fn get_varint_len() -> u32 {
-    0
-}
+use protocol::get_varint_len;
 
 
 #[test]
@@ -25,7 +22,7 @@ fn server_test() {
                 varint_buf.push(len_buf[0]& 0x7f);
             }
         }
-        let mut len =  GetVarintLen(varint_buf);
+        let mut len =  get_varint_len(varint_buf);
 
         let mut read_buf = vec![0u8; len as usize];
         connec.read_exact(&mut read_buf).await.unwrap();
@@ -49,7 +46,7 @@ fn server_test() {
                 varint_buf.push(len_buf[0]& 0x7f);
             }
         }
-        len =  GetVarintLen(varint_buf);
+        len =  get_varint_len(varint_buf);
         let mut read_buf = vec![0u8; len as usize];
         connec.read_exact(&mut read_buf).await.unwrap();
         println!("buf_len:{},buf:{:?}", len, read_buf);
