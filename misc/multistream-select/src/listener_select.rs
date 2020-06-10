@@ -20,7 +20,7 @@ use std::time::Duration;
 use utils::init_log;
 use std::sync::{Arc};
 use async_std::sync::Mutex;
-
+pub use futures_util::io::{ReadHalf, WriteHalf};
 
 pub fn get_len_buf_from_buf(mut input: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     let mut varint_buf: Vec<u8> = Vec::new();
@@ -68,7 +68,7 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>) {
 pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, mut sender: mpsc::Sender<ControlCommand>) {
     let mut  stream_id_index = 1;
     loop {
-        let res = get_stream(stream_id_index, sender.clone()).await;
+        let res = subscribe_stream(stream_id_index, sender.clone()).await;
         if let Ok(mut stream)= res{
             if !stream.cache.is_empty() {
                 let mut  data: Vec<u8> = stream.cache.drain(4..).collect();
@@ -159,7 +159,7 @@ where R: AsyncRead + Send + Unpin + 'static, W: AsyncWrite + Send + Unpin + 'sta
     Err("not match proto".to_string())
 }
 
-pub async fn upgrade_secio_protocol<S>(mut connec: S)
+pub async fn upgrade_secio_protocol<S>(mut connec: S) -> Result<( SecioSessionReader<ReadHalf<S>>,  SecioSessionWriter<WriteHalf<S>>), String>
  where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
 {
     let key1 = Keypair::generate_ed25519();
@@ -168,27 +168,12 @@ pub async fn upgrade_secio_protocol<S>(mut connec: S)
     println!("after handshake");
     match res {
         Ok((mut secure_conn_writer, mut secure_conn_reader) ) => {
-            let (control_sender, control_receiver) = mpsc::channel(10);
             let (stream_sender, stream_receiver) = mpsc::channel(10);
-
             let mut session_reader = SecioSessionReader::new(secure_conn_reader, Config::default(), Mode::Server,  stream_sender);
             let mut session_writer = SecioSessionWriter::new(secure_conn_writer, stream_receiver);
-            let arc_reader = session_reader.socket.clone();
-            let arc_writer = session_writer.socket.clone();
-            listener_select_proto_secio(arc_reader, arc_writer, vec!["/yamux/1.0.0\n".to_string()]).await;
-//                    let mut data = secure_conn_reader.read().await.unwrap();
-//                    println!("buf: {:?}", data);
-
-
-            let deal_remote_stream = remote_stream_deal(session_reader.stream_sender.clone(),control_sender.clone());
-            //   let period_send = period_send( control_sender);
-            let receive_process = session_reader.receive_loop( control_receiver);
-            let send_process = session_writer.send_process();
-            join!{receive_process, send_process, deal_remote_stream};//period_send,
-
-
+            return Ok((session_reader, session_writer))
         },
-        Err(e) => println!("handshake res:{:?}", e),
+        Err(e) => Err(format!("handshake res:{:?}", e)),
     }
 }
 
@@ -272,7 +257,16 @@ fn server_test() {
         match res {
             Ok(protos) => {
                 if protos.contains(&("/secio/1.0.0\n".to_string())) {
-                    upgrade_secio_protocol(connec.clone()).await;
+                    let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone()).await.unwrap();
+                    let arc_reader = session_reader.socket.clone();
+                    let arc_writer = session_writer.socket.clone();
+                    listener_select_proto_secio(arc_reader, arc_writer, vec!["/yamux/1.0.0\n".to_string()]).await;
+                    let (control_sender, control_receiver) = mpsc::channel(10);
+                    let deal_remote_stream = remote_stream_deal(session_reader.stream_sender.clone(),control_sender.clone());
+                    //   let period_send = period_send( control_sender);
+                    let receive_process = session_reader.receive_loop( control_receiver);
+                    let send_process = session_writer.send_process();
+                    join!{receive_process, send_process, deal_remote_stream};//period_send,
                 }
             },
             Err(e) => println!("err:{}","not match protocol".to_string()),
