@@ -13,7 +13,7 @@ use yamux::session::{SecioSessionWriter, SecioSessionReader};
 use yamux::Config;
 use yamux::frame::Frame;
 use yamux::session::{Mode, ControlCommand, StreamCommand};
-use yamux::session::{get_stream, open_stream};
+use yamux::session::{get_stream, open_stream, subscribe_stream};
 use futures::prelude::*;
 use async_std::task;
 use std::time::Duration;
@@ -66,10 +66,11 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>) {
 
 
 pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, mut sender: mpsc::Sender<ControlCommand>) {
-    let mut  stream_id_index = 1;
-    loop {
-        let res = subscribe_stream(stream_id_index, sender.clone()).await;
-        if let Ok(mut stream)= res{
+    let res = subscribe_stream(sender.clone()).await;
+    if let Ok(mut stream)= res{
+        loop {
+            let mut stream = stream.next().await.unwrap();
+
             if !stream.cache.is_empty() {
                 let mut  data: Vec<u8> = stream.cache.drain(4..).collect();
                 let mut len_buf = [0u8;4];
@@ -98,23 +99,37 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
             let mut data_receiver = stream.data_receiver.unwrap();
 
             task::spawn(async move {
+
               //  loop {
                     let mut buf = data_receiver.next().await;
+                    let (mut data, varint_buf) = get_len_buf_from_buf(buf.clone().unwrap());
+                    let mut len = GetVarintLen(varint_buf);
+                    println!("remote send receive:{:?}", buf.clone());
+                    buf = data_receiver.next().await;
+                    data = buf.clone().unwrap();
+                    let ping_proto: Vec<u8> = data.drain(20..).collect();
+                    let mut stream_clone = stream_spawn.clone();
+//                  let frame = Frame::data(stream_clone.id(), data).unwrap();
+//                  stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
+                    //send back ping protocol for negotiate
+                    let frame = Frame::data(stream_clone.id(), ping_proto).unwrap();
+                    stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
                    // let buf = std::str::from_utf8(&buf.unwrap()).unwrap().to_string();
                     println!("remote send receive:{:?}", buf);
                     buf = data_receiver.next().await;
                     println!("remote send receive:{:?}", buf.clone());
+
+                    buf = data_receiver.next().await;
                     let frame = Frame::data(stream_spawn.id(), buf.unwrap()).unwrap();
                     stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
               //  }
             });
-            stream_id_index += 2;
-            //break;
-        } else {
-            println!("get_stream fail :{:?}", res);
+           //break;
         }
-        task::sleep(Duration::from_secs(1)).await;
 
+
+    }else {
+        println!("get_stream fail :{:?}", res);
     }
 }
 
