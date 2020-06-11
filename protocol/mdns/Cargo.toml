@@ -1,5 +1,5 @@
 [package]
-name = "mdns"
+name = "yaanhyy-mdns"
 version = "0.1.0"
 authors = ["hyy"]
 edition = "2018"

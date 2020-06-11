@@ -9,26 +9,26 @@ use futures::{channel::{mpsc, oneshot}};
 use futures::{future, select, join};
 use crate::listener_select::remote_stream_deal;
 
-pub async fn dialer_select_proto<S>(mut connec: S, protocols: Vec<String>) -> Result<Vec<u8>, String>
+pub async fn dialer_select_proto<S>(mut connec: S, protocols: Vec<String>, init_flag: bool) -> Result<Vec<u8>, String>
 where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
 {
+    let mut len_buf = [0u8; 1];
+    let mut read_buf = Vec::new();
     //send MULTISTREAM
-    let mut len_buf = [0u8; 1];
-    len_buf[0] = MSG_MULTISTREAM_1_0.len() as u8;
-    let res = connec.write_all(&len_buf).await;
-    let res = connec.write_all(MSG_MULTISTREAM_1_0).await;
+    if init_flag {
 
+        len_buf[0] = MSG_MULTISTREAM_1_0.len() as u8;
+        let res = connec.write_all(&len_buf).await;
+        let res = connec.write_all(MSG_MULTISTREAM_1_0).await;
 
-    let mut len_buf = [0u8; 1];
-    let mut read_buf =  get_conn_varint_len(connec.clone()).await;
+        read_buf = get_conn_varint_len(connec.clone()).await;
 
-
-    let proto_name = std::str::from_utf8(&read_buf.to_owned()).unwrap().to_string();
-    println!("proto:{:?}", proto_name);
-    if  !read_buf.eq(&MSG_MULTISTREAM_1_0.to_vec()) {
-        return Err("remote not agree for MULTISTREAM protocol".to_string());
+        let proto_name = std::str::from_utf8(&read_buf.to_owned()).unwrap().to_string();
+        println!("proto:{:?}", proto_name);
+        if !read_buf.eq(&MSG_MULTISTREAM_1_0.to_vec()) {
+            return Err("remote not agree for MULTISTREAM protocol".to_string());
+        }
     }
-
     //send protocol for negotiate
     for mut proto in protocols {
         len_buf[0] = proto.len() as u8;
@@ -91,7 +91,7 @@ fn ping_client_test() {
     init_log("debug");
     async_std::task::block_on(async move {
         let connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
-        let match_proto = dialer_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string()]).await;
+        let match_proto = dialer_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string()], true).await;
         if match_proto.is_ok() {
             let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), Mode::Client).await.unwrap();
             let arc_reader = session_reader.socket.clone();

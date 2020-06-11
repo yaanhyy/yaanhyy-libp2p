@@ -1,6 +1,6 @@
-mod protocol;
-mod listener_select;
-mod dialer_select;
+pub mod protocol;
+pub mod listener_select;
+pub mod dialer_select;
 use futures_util::io::{AsyncReadExt, AsyncWriteExt};
 use protocol::get_varint_len;
 

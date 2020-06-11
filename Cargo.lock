@@ -1664,12 +1664,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
+name = "yaanhyy-identity"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "futures 0.3.5",
+ "futures-util",
+ "prost-build",
+ "utils",
+ "yaanhyy-multistream-select",
+ "yaanhyy-secio",
+ "yaanhyy-yamux",
+]
+
+[[package]]
 name = "yaanhyy-libp2p"
 version = "0.1.0"
 dependencies = [
  "utils",
+ "yaanhyy-mdns",
  "yaanhyy-multistream-select",
 ]
+
+[[package]]
+name = "yaanhyy-mdns"
+version = "0.1.0"
 
 [[package]]
 name = "yaanhyy-multistream-select"
@@ -1682,6 +1701,10 @@ dependencies = [
  "yaanhyy-secio",
  "yaanhyy-yamux",
 ]
+
+[[package]]
+name = "yaanhyy-ping"
+version = "0.1.0"
 
 [[package]]
 name = "yaanhyy-secio"

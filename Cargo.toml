@@ -18,9 +18,13 @@ edition = "2018"
 #yamux = { package="yaanhyy-yamux", rev = 'bf83b146ea7a73578ea516b1c593185900d933ae', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
 multistream-select = { package = "yaanhyy-multistream-select", path = "misc/multistream-select" }
 utils = { package = "utils", path = "utils" }
+mdns = { package = "yaanhyy-mdns", path = "protocol/mdns" }
 
 [workspace]
 members = [
     "misc/multistream-select",
-    "utils"
+    "utils",
+    "protocol/mdns",
+    "protocol/ping",
+    "protocol/identity"
 ]
