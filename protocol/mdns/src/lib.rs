@@ -1,3 +1,4 @@
+pub mod service;
 
 /// Hardcoded name of the mDNS service. Part of the mDNS libp2p specifications.
 const SERVICE_NAME: &[u8] = b"_p2p._udp.local";
