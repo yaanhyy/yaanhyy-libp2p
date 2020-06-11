@@ -10,6 +10,15 @@ use futures::{future, select, join};
 use multistream_select::dialer_select::{dialer_select_proto_secio, dialer_select_proto};
 use crate::structs::Identify;
 use prost::Message;
+use parity_multiaddr::Multiaddr;
+use parity_multiaddr::Protocol::*;
+use std::{
+    borrow::Cow,
+    convert::TryFrom,
+    iter::FromIterator,
+    net::{Ipv4Addr, Ipv6Addr},
+    str::FromStr
+};
 
 #[test]
 fn identity_client_test() {
@@ -51,6 +60,14 @@ fn identity_client_test() {
                 }
             };
             println!("Identify:{:?}", identify_in );
+            for addr in identify_in.listen_addrs.iter_mut() {
+//                let len = addr.len();
+//                let mut array = [0u8; 100];
+//                array.copy_from_slice(addr.as_slice());
+                println!("addr:{:?}", addr);
+                let multiaddr: Multiaddr= bincode::deserialize(&addr.to_vec()).unwrap();
+        //        println!("multiaddr:{:?}", std::str::from_utf8(addr).unwrap().parse::<Multiaddr>().unwrap());
+            }
             connec.read_exact(&mut read_buf).await.unwrap();
             println!("read_buf:{:?}", read_buf );
         }
