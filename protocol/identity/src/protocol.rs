@@ -8,12 +8,14 @@ use secio::codec::{SecureHalfConnWrite, SecureHalfConnRead};
 use futures::{channel::{mpsc, oneshot}};
 use futures::{future, select, join};
 use multistream_select::dialer_select::{dialer_select_proto_secio, dialer_select_proto};
+use crate::structs::Identify;
+use prost::Message;
 
 #[test]
 fn identity_client_test() {
     init_log("debug");
     async_std::task::block_on(async move {
-        let connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
+        let mut  connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
         let match_proto = dialer_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string(), "/yamux/1.0.0\n".to_string()], true).await;
         if match_proto.is_ok() {
             let proto = match_proto.unwrap();
@@ -38,6 +40,19 @@ fn identity_client_test() {
             //raw, match apply protocol
             let match_proto = dialer_select_proto(connec.clone(), vec!["/ipfs/id/1.0.0\n".to_string()], false).await;
             println!("match_proto:{:?}", match_proto);
+            let mut read_buf = vec![0u8; 10];
+            let res = get_conn_varint_len(connec.clone()).await;
+            println!("res:{:?}", res);
+            let mut  identify_in: Identify = match Identify::decode(&res[..]) {
+                Ok(identify) => identify,
+                Err(_) => {
+                    println!("failed to parse remote's exchage protobuf message");
+                    return (); //Err("failed to parse remote's exchange protobuf".to_string());
+                }
+            };
+            println!("Identify:{:?}", identify_in );
+            connec.read_exact(&mut read_buf).await.unwrap();
+            println!("read_buf:{:?}", read_buf );
         }
     })
 }

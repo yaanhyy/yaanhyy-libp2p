@@ -1,4 +1,5 @@
-mod protocol;
+pub mod protocol;
+mod structs;
 
 #[cfg(test)]
 mod tests {
