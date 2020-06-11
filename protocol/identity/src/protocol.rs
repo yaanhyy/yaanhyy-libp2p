@@ -1,5 +1,5 @@
 use futures::prelude::*;
-use utils::init_log;
+use utils::{init_log, write_varint};
 use multistream_select::protocol::{get_varint_len, split_length_from_package, MSG_MULTISTREAM_1_0, upgrade_secio_protocol, get_conn_varint_len};
 use yamux::session::{Mode, ControlCommand, StreamCommand};
 use std::sync::{Arc};
@@ -94,16 +94,6 @@ fn identity_client_test() {
         }
     })
 }
-
-pub async fn write_varint(socket: &mut (impl AsyncWrite + Unpin), len: usize)
-                          -> Result<(), String>
-{
-    let mut len_data = unsigned_varint::encode::usize_buffer();
-    let encoded_len = unsigned_varint::encode::usize(len, &mut len_data).len();
-    socket.write_all(&len_data[..encoded_len]).await;
-    Ok(())
-}
-
 
 #[test]
 fn identity_server_test() {

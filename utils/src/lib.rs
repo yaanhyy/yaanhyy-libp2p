@@ -1,5 +1,15 @@
 use env_logger;
 use log::debug;
+use futures::prelude::*;
+
+pub async fn write_varint(socket: &mut (impl AsyncWrite + Unpin), len: usize)
+                          -> Result<(), String>
+{
+    let mut len_data = unsigned_varint::encode::usize_buffer();
+    let encoded_len = unsigned_varint::encode::usize(len, &mut len_data).len();
+    socket.write_all(&len_data[..encoded_len]).await;
+    Ok(())
+}
 
 pub fn init_log(log_level: &str){
     use std::io::Write;

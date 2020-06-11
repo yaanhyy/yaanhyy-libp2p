@@ -1590,7 +1590,9 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "env_logger",
+ "futures 0.3.5",
  "log",
+ "unsigned-varint",
 ]
 
 [[package]]
@@ -1767,7 +1769,6 @@ dependencies = [
  "parity-multiaddr",
  "prost",
  "prost-build",
- "unsigned-varint",
  "utils",
  "yaanhyy-multistream-select",
  "yaanhyy-secio",
