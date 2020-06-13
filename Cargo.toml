@@ -26,5 +26,6 @@ members = [
     "utils",
     "protocol/mdns",
     "protocol/ping",
-    "protocol/identity"
+    "protocol/identity",
+    "protocol/gossipsub"
 ]

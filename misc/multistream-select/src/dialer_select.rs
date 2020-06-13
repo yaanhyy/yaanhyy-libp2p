@@ -56,6 +56,7 @@ pub async fn dialer_select_proto_secio<R, W>(mut reader: Arc<Mutex<SecureHalfCon
 
 
     let mut data =  (*reader.lock().await).read().await.unwrap();
+    println!("data:{:?}",data);
     let (mut data, varint_buf) = split_length_from_package(data);
     let mut len = get_varint_len(varint_buf);
     let mut rest: Vec<_> = data.drain((len as usize)..).collect();

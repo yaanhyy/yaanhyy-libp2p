@@ -1,5 +1,5 @@
 [package]
-name = "gossipsub"
+name = "yaanhyy-gossipsub"
 version = "0.1.0"
 authors = ["hyy"]
 edition = "2018"
@@ -7,3 +7,18 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-std = "1.0"
+futures = "0.3.5"
+futures-util = "0.3.5"
+prost = "0.6.1"
+utils = {path = "../../utils"}
+secio = { package="yaanhyy-secio", rev = '28ed08d58f2cc303b55cca99e2e5df9a6d734c4e', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
+yamux = { package="yaanhyy-yamux", rev = '4f428a79e5c0a23c7212694a3a781ccc853735c9', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
+multistream-select = {package="yaanhyy-multistream-select", path="../../misc/multistream-select"}
+identity = {package="yaanhyy-identity", path="../identity"}
+parity-multiaddr = "0.9.0"
+log = "0.4.8"
+sha2 = "0.8.1"
+base64 = "0.11.0"
+unsigned-varint = { version = "0.3.0", features = ["futures-codec"] }
+bytes = "0.5.4"

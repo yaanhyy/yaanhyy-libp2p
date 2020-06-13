@@ -1,3 +1,6 @@
+pub mod gossipsub;
+pub mod protocol;
+pub mod topic;
 #[cfg(test)]
 mod tests {
     #[test]

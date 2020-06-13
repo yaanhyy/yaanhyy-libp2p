@@ -150,6 +150,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
+
+[[package]]
 name = "bindgen"
 version = "0.51.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -604,6 +610,18 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro-nested",
  "slab",
+]
+
+[[package]]
+name = "futures_codec"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0a73299e4718f5452e45980fc1d6957a070abe308d3700b63b8673f47e1c2b3"
+dependencies = [
+ "bytes",
+ "futures 0.3.5",
+ "memchr",
+ "pin-project",
 ]
 
 [[package]]
@@ -1577,6 +1595,10 @@ name = "unsigned-varint"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f67332660eb59a6f1eb24ff1220c9e8d01738a8503c6002e30bcfe4bd9f2b4a9"
+dependencies = [
+ "bytes",
+ "futures_codec",
+]
 
 [[package]]
 name = "untrusted"
@@ -1769,6 +1791,27 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "yaanhyy-gossipsub"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "base64",
+ "bytes",
+ "futures 0.3.5",
+ "futures-util",
+ "log",
+ "parity-multiaddr",
+ "prost",
+ "sha2",
+ "unsigned-varint",
+ "utils",
+ "yaanhyy-identity",
+ "yaanhyy-multistream-select",
+ "yaanhyy-secio",
+ "yaanhyy-yamux",
+]
 
 [[package]]
 name = "yaanhyy-identity"
