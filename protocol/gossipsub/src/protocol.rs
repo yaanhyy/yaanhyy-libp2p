@@ -5,6 +5,7 @@ use std::sync::{Arc};
 use async_std::sync::Mutex;
 use secio::codec::{SecureHalfConnWrite, SecureHalfConnRead};
 use secio::identity::PublicKey;
+use secio::peer_id::PeerId;
 use futures::{channel::{mpsc, oneshot}};
 use futures::{future, select, join};
 use multistream_select::dialer_select::{dialer_select_proto_secio, dialer_select_proto};
@@ -136,7 +137,10 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
                         return (); //Err("failed to parse remote's exchange protobuf".to_string());
                     }
                 };
-                println!("rpc topic:{:?}", rpc_in);
+                println!("rpc topic:{:?}", rpc_in.clone());
+                let publish = rpc_in.publish.pop().unwrap();
+                let id = PeerId::from_bytes( publish.from.unwrap());
+                println!("rpc msg from:{:?}", id);
 
             });
             //break;
