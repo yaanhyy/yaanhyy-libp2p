@@ -1804,6 +1804,7 @@ dependencies = [
  "log",
  "parity-multiaddr",
  "prost",
+ "rand",
  "sha2",
  "unsigned-varint",
  "utils",

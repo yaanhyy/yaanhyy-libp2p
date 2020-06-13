@@ -22,3 +22,4 @@ sha2 = "0.8.1"
 base64 = "0.11.0"
 unsigned-varint = { version = "0.3.0", features = ["futures-codec"] }
 bytes = "0.5.4"
+rand = "0.7.3"

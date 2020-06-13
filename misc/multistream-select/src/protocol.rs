@@ -65,11 +65,11 @@ pub async fn get_conn_varint_len<S>(mut conn: S) -> Vec<u8>
     read_buf
 }
 
-pub async fn upgrade_secio_protocol<S>(mut connec: S, mode: Mode) -> Result<( SecioSessionReader<ReadHalf<S>>,  SecioSessionWriter<WriteHalf<S>>), String>
+pub async fn upgrade_secio_protocol<S>(mut connec: S, local_key: Keypair, mode: Mode) -> Result<( SecioSessionReader<ReadHalf<S>>,  SecioSessionWriter<WriteHalf<S>>), String>
     where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
 {
-    let key1 = Keypair::generate_ed25519();
-    let mut config = SecioConfig::new(key1);
+    
+    let mut config = SecioConfig::new(local_key);
     let mut res = handshake(connec.clone(), config).await;
     println!("after handshake");
     match res {
