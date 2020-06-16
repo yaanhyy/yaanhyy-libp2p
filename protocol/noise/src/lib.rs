@@ -1,5 +1,8 @@
-mod handshake;
+pub mod handshake;
 mod payload;
+pub mod protocol;
+pub mod error;
+
 #[cfg(test)]
 mod tests {
     #[test]
