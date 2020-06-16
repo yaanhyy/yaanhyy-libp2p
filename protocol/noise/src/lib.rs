@@ -1,3 +1,5 @@
+mod handshake;
+mod payload;
 #[cfg(test)]
 mod tests {
     #[test]

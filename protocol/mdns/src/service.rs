@@ -1,5 +1,10 @@
 use async_std::net::UdpSocket;
 use std::{convert::TryFrom as _, fmt, io, net::Ipv4Addr, net::SocketAddr, str, time::{Duration, Instant}};
+use secio::identity::PublicKey;
+use secio::peer_id::PeerId;
+use lazy_static::lazy_static;
+use parity_multiaddr::Multiaddr;
+
 lazy_static! {
     static ref IPV4_MDNS_MULTICAST_ADDRESS: SocketAddr = SocketAddr::from((
         Ipv4Addr::new(224, 0, 0, 251),
@@ -108,7 +113,7 @@ impl MdnsResponse {
     /// Returns the list of peers that have been reported in this packet.
     ///
     /// > **Note**: Keep in mind that this will also contain the responses we sent ourselves.
-    pub fn discovered_peers(&self) -> impl Iterator<Item = &MdnsPeer> {
+    pub fn discovered_peers(&self) -> impl Iterator<Item=&MdnsPeer> {
         self.peers.iter()
     }
 
@@ -116,8 +121,8 @@ impl MdnsResponse {
     #[inline]
     pub fn remote_addr(&self) -> &SocketAddr {
         &self.from
-
     }
+}
 
 impl fmt::Debug for MdnsResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

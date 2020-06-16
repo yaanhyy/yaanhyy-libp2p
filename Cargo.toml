@@ -19,6 +19,7 @@ edition = "2018"
 multistream-select = { package = "yaanhyy-multistream-select", path = "misc/multistream-select" }
 utils = { package = "utils", path = "utils" }
 mdns = { package = "yaanhyy-mdns", path = "protocol/mdns" }
+noise = { package = "yaanhyy-noise", path = "protocol/noise" }
 
 [workspace]
 members = [
@@ -27,5 +28,6 @@ members = [
     "protocol/mdns",
     "protocol/ping",
     "protocol/identity",
-    "protocol/gossipsub"
+    "protocol/gossipsub",
+    "protocol/noise"
 ]

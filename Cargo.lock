@@ -431,6 +431,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dns-parser"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4d33be9473d06f75f58220f71f7a9317aca647dc061dbd3c361b0bef505fbea"
+dependencies = [
+ "byteorder",
+ "quick-error",
+]
+
+[[package]]
 name = "ed25519-dalek"
 version = "1.0.0-pre.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1837,13 +1847,20 @@ dependencies = [
  "utils",
  "yaanhyy-mdns",
  "yaanhyy-multistream-select",
+ "yaanhyy-noise",
 ]
 
 [[package]]
 name = "yaanhyy-mdns"
 version = "0.1.0"
 dependencies = [
+ "async-std",
+ "dns-parser",
+ "futures 0.3.5",
+ "lazy_static",
  "net2",
+ "parity-multiaddr",
+ "yaanhyy-secio",
 ]
 
 [[package]]
@@ -1859,13 +1876,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "yaanhyy-noise"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "futures 0.3.5",
+ "futures-util",
+ "parity-multiaddr",
+ "prost",
+ "utils",
+ "yaanhyy-multistream-select",
+]
+
+[[package]]
 name = "yaanhyy-ping"
 version = "0.1.0"
 
 [[package]]
 name = "yaanhyy-secio"
 version = "0.1.0"
-source = "git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=28ed08d58f2cc303b55cca99e2e5df9a6d734c4e#28ed08d58f2cc303b55cca99e2e5df9a6d734c4e"
+source = "git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=16421be27a37337526110c7f739b1c91d8414988#16421be27a37337526110c7f739b1c91d8414988"
 dependencies = [
  "aes-ctr",
  "asn1_der",
@@ -1896,7 +1926,7 @@ dependencies = [
 [[package]]
 name = "yaanhyy-yamux"
 version = "0.1.0"
-source = "git+https://github.com/yaanhyy/yaanhyy-yamux.git?rev=4f428a79e5c0a23c7212694a3a781ccc853735c9#4f428a79e5c0a23c7212694a3a781ccc853735c9"
+source = "git+https://github.com/yaanhyy/yaanhyy-yamux.git?rev=83ef900e6948596ba923cab3b222306b0dc0cb13#83ef900e6948596ba923cab3b222306b0dc0cb13"
 dependencies = [
  "async-std",
  "futures 0.3.5",
