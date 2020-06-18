@@ -4,12 +4,14 @@ use crate::payload::NoiseHandshakePayload;
 use prost::Message;
 use secio::identity;
 use crate::protocol::{KeypairIdentity, PublicKey};
-use crate::io::NoiseOutput;
+use crate::io::{NoiseOutput, SnowState};
 use futures::prelude::*;
+use async_std::sync::Mutex;
+use std::{fmt, sync::{Arc}, task::{Context, Poll}, pin::Pin};
 
 /// Handshake state.
-struct State {
-    session: snow::HandshakeState,
+pub struct State {
+
     /// The associated public identity of the local node's static DH keypair,
     /// which can be sent to the remote as part of an authenticated handshake.
     identity: KeypairIdentity,
@@ -28,7 +30,7 @@ impl State {
     /// provided session for cryptographic operations according to the chosen
     /// Noise handshake pattern.
     fn new(
-        session: snow::HandshakeState,
+
         identity: KeypairIdentity,
         identity_x: IdentityExchange
     ) -> Self {
@@ -40,7 +42,7 @@ impl State {
         };
 
         State {
-            session,
+
             identity,
             dh_remote_pubkey_sig: None,
             id_remote_pubkey,
@@ -124,8 +126,8 @@ async fn recv_identity<T>(state: &mut State, mut socket: T) -> Result<(), String
     let len = u16::from_be_bytes(len_buf) as usize;
 
     let mut payload_buf = vec![0; len];
-    let res = socket.read_exact(&mut payload_buf).await;
-    println!("payload_buf res:{:?}", res);
+   // let res = socket.read_exact(&mut payload_buf).await;
+   // println!("payload_buf res:{:?}", res);
     let pb = match NoiseHandshakePayload::decode(&payload_buf[..]) {
         Ok(prop) => prop,
         Err(_) => {
@@ -154,7 +156,7 @@ async fn recv_identity<T>(state: &mut State, mut socket: T) -> Result<(), String
 }
 
 /// Send a Noise handshake message with a payload identifying the local node to the remote.
-async fn send_identity<T>(state: &mut State, mut socket: T) -> Result<(), String>
+async fn send_identity<T>(state: &mut State, mut socket: NoiseOutput<T>) -> Result<(), String>
     where
         T: AsyncWrite + Unpin,
 {
@@ -168,28 +170,28 @@ async fn send_identity<T>(state: &mut State, mut socket: T) -> Result<(), String
     let mut buf = Vec::with_capacity(pb.encoded_len());
     pb.encode(&mut buf).expect("Vec<u8> provides capacity as needed");
     let len = (buf.len() as u16).to_be_bytes();
-    let res = socket.write_all(&len).await;
-    let res = socket.write_all(&buf).await;
+    // let res = socket.write_all(&len).await;
+    // let res = socket.write_all(&buf).await;
     //socket.flush().await;
     Ok(())
 }
 
 /// A future for sending a Noise handshake message with an empty payload.
-pub async fn send_empty<T>(state: &mut State, mut socket: T) -> Result<(), String>
+pub async fn send_empty<T>(state: &mut State, mut socket: NoiseOutput<T>) -> Result<(), String>
     where
         T: AsyncWrite + Unpin
 {
-    let res = socket.write(&[]).await;
-    let res = socket.flush().await;
+    // let res = socket.write(&[]).await;
+    // let res = socket.flush().await;
     Ok(())
 }
 
 /// A future for receiving a Noise handshake message with an empty payload.
-pub async fn recv_empty<T>(state: &mut State, mut socket: T) -> Result<(), String>
+pub async fn recv_empty<T>(state: &mut State, mut socket: NoiseOutput<T>) -> Result<(), String>
     where
-        T: AsyncRead + Unpin
+        T: AsyncWrite  +  AsyncRead + Send + Unpin + 'static
 {
-    let res = socket.read(&mut []).await;
+    let res = socket.read().await;
     println!("recv_empty res:{:?}", res);
     Ok(())
 }
@@ -256,10 +258,12 @@ pub async fn rt15_responder<T>(
     where
         T: AsyncWrite + AsyncRead + Unpin + Send + 'static,
 {
-        let mut state = State::new( session, identity, identity_x);
-        recv_empty(&mut state, io).await;
-        send_identity(&mut state, io).await;
-        recv_identity(&mut state, io).await;
+        //let noise_io =  Arc::new(Mutex::new(NoiseOutput::new(io, SnowState::Handshake(session))));
+        let noise_io =  NoiseOutput::new(io, SnowState::Handshake(session));
+        let mut state = State::new( identity, identity_x);
+        recv_empty(&mut state, noise_io).await;
+  //      send_identity(&mut state, noise_io.clone()).await;
+  //      recv_identity(&mut state, noise_io).await;
         //state.finish();
 }
 
@@ -286,7 +290,7 @@ mod tests {
                 .build_responder()
                 .map_err(|_|"NoiseError::from".to_string());
             if let Ok(state) = session {
-                rt15_responder(connec, state, config.dh_keys.into_identity(),IdentityExchange::Mutual).await;
+                rt15_responder(connec.clone(), state, config.dh_keys.into_identity(),IdentityExchange::Mutual).await;
             }
         });
         Ok(())
