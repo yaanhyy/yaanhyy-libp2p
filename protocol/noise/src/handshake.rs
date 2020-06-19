@@ -169,6 +169,7 @@ async fn send_identity<T>(socket: &mut NoiseOutput<T>) -> Result<(), String>
     }
     let mut buf = Vec::with_capacity(pb.encoded_len());
     pb.encode(&mut buf).expect("Vec<u8> provides capacity as needed");
+    println!("msg:{:?}", buf);
    // let mut buf_len = (buf.len() as u16).to_be_bytes();
     let res = socket.send(& mut buf).await;
     // let res = socket.write_all(&buf).await;

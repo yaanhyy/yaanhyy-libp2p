@@ -117,15 +117,18 @@ impl<T: AsyncWrite  + AsyncRead + Send + Unpin + 'static> NoiseOutput<T> {
 
 
     pub async fn send(&mut self, buf: &mut Vec<u8>) -> Result<(), String> {
-        let mut encrypt_buffer = Vec::with_capacity(buf.len() + EXTRA_ENCRYPT_SPACE);
-        self.session.write_message(&buf, &mut encrypt_buffer);
+        let mut encrypt_buffer = vec![0u8; buf.len() + EXTRA_ENCRYPT_SPACE];
+        let encrypt_len = self.session.write_message(&buf, &mut encrypt_buffer).unwrap();
 
 //        self.encoding_cipher.encrypt(buf.as_mut());
 //        let signature = self.encoding_hmac.sign(buf.as_mut());
 //        buf.extend_from_slice(signature.as_ref());
-        let mut res = self.io.write_all(&(encrypt_buffer.len() as u16).to_be_bytes()).await;
+        println!("encrypt_buffer:{:?}", encrypt_buffer);
+        let mut buf_len = (encrypt_len as u16).to_be_bytes();
+        println!("send buf_len:{:?}", buf_len);
+        let mut res = self.io.write_all(&buf_len).await;
         if let Ok(_) = res {
-            res = self.io.write_all(encrypt_buffer.as_mut()).await;
+            res = self.io.write_all(&encrypt_buffer[..encrypt_len]).await;
             if let Err(e) = res {
                 return Err("secio send fail".to_string());
             }
