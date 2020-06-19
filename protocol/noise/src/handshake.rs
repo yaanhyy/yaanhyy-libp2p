@@ -230,14 +230,14 @@ async fn send_identity<T>(socket: &mut NoiseOutput<T>) -> Result<(), String>
 }
 
 /// A future for sending a Noise handshake message with an empty payload.
-//pub async fn send_empty<T>(state: &mut State, mut socket: NoiseOutput<T>) -> Result<(), String>
-//    where
-//        T: AsyncWrite + Unpin
-//{
-//    // let res = socket.write(&[]).await;
-//    // let res = socket.flush().await;
-//    Ok(())
-//}
+pub async fn send_empty<T>(socket: &mut NoiseOutput<T>) -> Result<(), String>
+    where
+        T: AsyncWrite  +  AsyncRead + Send + Unpin + 'static
+{
+    let res = socket.send(& mut vec![]).await;
+
+    Ok(())
+}
 
 /// A future for receiving a Noise handshake message with an empty payload.
 pub async fn recv_empty<T>(socket: &mut NoiseOutput<T>) -> Result<(), String>
@@ -267,22 +267,22 @@ pub async fn recv_empty<T>(socket: &mut NoiseOutput<T>) -> Result<(), String>
 /// initiator <-{id}- responder
 /// initiator -{id}-> responder
 /// ```
-//pub async fn rt15_initiator<T>(
-//    io: T,
-//    session: Result<snow::HandshakeState, String>,
-//    identity: KeypairIdentity,
-//    identity_x: IdentityExchange
-//) -> ()
-//    where
-//        T: AsyncWrite + AsyncRead + Unpin + Send + 'static,
-//
-//{
-//        let mut state = State::new(session, identity, identity_x)?;
-//        send_empty(&mut state, io).await?;
-//        recv_identity(&mut state, io).await?;
-//        send_identity(&mut state, io).await?;
-//        state.finish()
-//}
+pub async fn rt15_initiator<T>(
+    io: T,
+    session: snow::HandshakeState,
+    identity: KeypairIdentity,
+    identity_x: IdentityExchange
+) -> Result<(RemoteIdentity, NoiseOutput<T>), String>
+    where
+        T: AsyncWrite + AsyncRead + Unpin + Send + 'static,
+
+{
+        let mut noise_io =  NoiseOutput::new(io, SnowState::Handshake(session), identity, identity_x);
+        send_empty(&mut noise_io).await;
+        recv_identity(&mut noise_io).await;
+        send_identity(&mut noise_io).await;
+        finish(noise_io)
+}
 
 /// Creates an authenticated Noise handshake for the responder of a
 /// 1.5-roundtrip (3 message) handshake pattern.
@@ -322,7 +322,7 @@ pub async fn rt15_responder<T>(
 
 mod tests {
     //use super::handshake;
-    use super::{IdentityExchange, rt15_responder};
+    use super::{IdentityExchange, rt15_responder, rt15_initiator};
     use secio::identity;
     use std::thread::sleep;
     use std::time;
@@ -330,7 +330,7 @@ mod tests {
     use crate::protocol::{Keypair};
     use super::super::NoiseConfig;
     #[test]
-    fn handshake_test() -> Result<(), String> {
+    fn handshake_server_test() -> Result<(), String> {
         async_std::task::block_on(async move {
             let server_id = identity::Keypair::generate_ed25519();
             let server_id_public = server_id.public();
@@ -352,10 +352,30 @@ mod tests {
             }
         });
         Ok(())
-//        loop{
-//            println!("wait");
-//            let ten_millis = time::Duration::from_secs(10);
-//            sleep(ten_millis);
-//        };
+    }
+
+    #[test]
+    fn handshake_client_test() -> Result<(), String> {
+        async_std::task::block_on(async move {
+            let client_id = identity::Keypair::generate_ed25519();
+            let client_id_public = client_id.public();
+            let connec = async_std::net::TcpStream::connect("127.0.0.1:8981").await.unwrap();
+            let client_dh = Keypair::new().into_authentic(&client_id).unwrap();
+            let config = NoiseConfig::xx(client_dh);
+            let session = config.params.into_builder()
+                .local_private_key(config.dh_keys.secret().as_ref())
+                .build_initiator()
+                .map_err(|_|"NoiseError::from".to_string());
+            if let Ok(state) = session {
+                let res = rt15_initiator(connec.clone(), state, config.dh_keys.into_identity(),IdentityExchange::Mutual).await;
+                if let Ok((remote, mut noise_io)) = res {
+                    println!("send msg");
+                    noise_io.send(&mut "ok baby".as_bytes().to_vec()).await;
+                    let mut n = noise_io.read().await;
+                    println!("data:{:?}", n.unwrap());
+                }
+            }
+        });
+        Ok(())
     }
 }
