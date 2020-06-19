@@ -111,8 +111,9 @@ impl<T: AsyncWrite  + AsyncRead + Send + Unpin + 'static> NoiseOutput<T> {
         println!("noise read buf_len:{},buf:{:?}", n, read_buf);
         let mut decrypt_buffer = vec![0u8; n];
         let res  = self.session.read_message(&read_buf, &mut decrypt_buffer);
-        println!("decrypt_buffer:{:?}", decrypt_buffer);
-        return Ok(decrypt_buffer.to_owned());
+        let len = res.unwrap();
+        println!("decrypt_buffer len:{}:{:?}", len, decrypt_buffer);
+        return Ok(decrypt_buffer[..len].to_owned());
     }
 
 
@@ -120,9 +121,6 @@ impl<T: AsyncWrite  + AsyncRead + Send + Unpin + 'static> NoiseOutput<T> {
         let mut encrypt_buffer = vec![0u8; buf.len() + EXTRA_ENCRYPT_SPACE];
         let encrypt_len = self.session.write_message(&buf, &mut encrypt_buffer).unwrap();
 
-//        self.encoding_cipher.encrypt(buf.as_mut());
-//        let signature = self.encoding_hmac.sign(buf.as_mut());
-//        buf.extend_from_slice(signature.as_ref());
         println!("encrypt_buffer:{:?}", encrypt_buffer);
         let mut buf_len = (encrypt_len as u16).to_be_bytes();
         println!("send buf_len:{:?}", buf_len);
