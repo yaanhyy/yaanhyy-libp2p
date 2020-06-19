@@ -7,6 +7,9 @@ use futures::prelude::*;
 use futures::prelude::AsyncRead;
 use futures::prelude::AsyncWrite;
 use futures_util::io;
+use crate::protocol::{KeypairIdentity, PublicKey};
+use secio::identity;
+use crate::handshake::IdentityExchange;
 /// Max. size of a noise package.
 const MAX_NOISE_PKG_LEN: usize = 65535;
 /// Extra space given to the encryption buffer to hold key material.
@@ -60,22 +63,42 @@ impl SnowState {
 pub struct NoiseOutput<T> {
     pub io: T,
     pub session: SnowState,
-    pub read_buffer: Vec<u8>,
-    pub write_buffer: Vec<u8>,
-    pub decrypt_buffer: Vec<u8>,
-    pub encrypt_buffer: Vec<u8>
+    /// The associated public identity of the local node's static DH keypair,
+    /// which can be sent to the remote as part of an authenticated handshake.
+    pub identity: KeypairIdentity,
+    /// The received signature over the remote's static DH public key, if any.
+    pub dh_remote_pubkey_sig: Option<Vec<u8>>,
+    /// The known or received public identity key of the remote, if any.
+    pub id_remote_pubkey: Option<identity::PublicKey>,
+    /// Whether to send the public identity key of the local node to the remote.
+    pub send_identity: bool,
+//    pub read_buffer: Vec<u8>,
+//    pub write_buffer: Vec<u8>,
+//    pub decrypt_buffer: Vec<u8>,
+//    pub encrypt_buffer: Vec<u8>
 }
 
 
 impl<T: AsyncWrite  + AsyncRead + Send + Unpin + 'static> NoiseOutput<T> {
-    pub fn new(io: T, session: SnowState) -> Self {
+    pub fn new(io: T, session: SnowState, identity: KeypairIdentity, identity_x: IdentityExchange) -> Self {
+        let (id_remote_pubkey, send_identity) = match identity_x {
+            IdentityExchange::Mutual => (None, true),
+            IdentityExchange::Send { remote } => (Some(remote), true),
+            IdentityExchange::Receive => (None, false),
+            IdentityExchange::None { remote } => (Some(remote), false)
+        };
+
         NoiseOutput {
             io,
             session,
-            read_buffer: Vec::new(),
-            write_buffer: Vec::new(),
-            decrypt_buffer: Vec::new(),
-            encrypt_buffer: Vec::new()
+            identity,
+            dh_remote_pubkey_sig: None,
+            id_remote_pubkey,
+            send_identity
+//            read_buffer: Vec::new(),
+//            write_buffer: Vec::new(),
+//            decrypt_buffer: Vec::new(),
+//            encrypt_buffer: Vec::new()
         }
     }
 
@@ -85,9 +108,30 @@ impl<T: AsyncWrite  + AsyncRead + Send + Unpin + 'static> NoiseOutput<T> {
         let mut n = u16::from_be_bytes(len) as usize;
         let mut read_buf = vec![0u8; n];
         self.io.read_exact(&mut read_buf).await.unwrap();
-        debug!("secio read buf_len:{},buf:{:?}", n, read_buf);
-
-        return Ok("ok".to_string().into_bytes());
+        println!("noise read buf_len:{},buf:{:?}", n, read_buf);
+        let mut decrypt_buffer = vec![0u8; n];
+        let res  = self.session.read_message(&read_buf, &mut decrypt_buffer);
+        println!("decrypt_buffer:{:?}", decrypt_buffer);
+        return Ok(decrypt_buffer.to_owned());
     }
 
+
+    pub async fn send(&mut self, buf: &mut Vec<u8>) -> Result<(), String> {
+        let mut encrypt_buffer = Vec::with_capacity(buf.len() + EXTRA_ENCRYPT_SPACE);
+        self.session.write_message(&buf, &mut encrypt_buffer);
+
+//        self.encoding_cipher.encrypt(buf.as_mut());
+//        let signature = self.encoding_hmac.sign(buf.as_mut());
+//        buf.extend_from_slice(signature.as_ref());
+        let mut res = self.io.write_all(&(encrypt_buffer.len() as u16).to_be_bytes()).await;
+        if let Ok(_) = res {
+            res = self.io.write_all(encrypt_buffer.as_mut()).await;
+            if let Err(e) = res {
+                return Err("secio send fail".to_string());
+            }
+        } else {
+            return Err("secio send fail".to_string());
+        }
+        Ok(())
+    }
 }

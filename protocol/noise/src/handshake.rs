@@ -10,46 +10,46 @@ use async_std::sync::Mutex;
 use std::{fmt, sync::{Arc}, task::{Context, Poll}, pin::Pin};
 
 /// Handshake state.
-pub struct State {
+//pub struct State {
+//
+//    /// The associated public identity of the local node's static DH keypair,
+//    /// which can be sent to the remote as part of an authenticated handshake.
+//    identity: KeypairIdentity,
+//    /// The received signature over the remote's static DH public key, if any.
+//    dh_remote_pubkey_sig: Option<Vec<u8>>,
+//    /// The known or received public identity key of the remote, if any.
+//    id_remote_pubkey: Option<identity::PublicKey>,
+//    /// Whether to send the public identity key of the local node to the remote.
+//    send_identity: bool,
+//}
 
-    /// The associated public identity of the local node's static DH keypair,
-    /// which can be sent to the remote as part of an authenticated handshake.
-    identity: KeypairIdentity,
-    /// The received signature over the remote's static DH public key, if any.
-    dh_remote_pubkey_sig: Option<Vec<u8>>,
-    /// The known or received public identity key of the remote, if any.
-    id_remote_pubkey: Option<identity::PublicKey>,
-    /// Whether to send the public identity key of the local node to the remote.
-    send_identity: bool,
-}
-
-impl State {
-    /// Initializes the state for a new Noise handshake, using the given local
-    /// identity keypair and local DH static public key. The handshake messages
-    /// will be sent and received on the given I/O resource and using the
-    /// provided session for cryptographic operations according to the chosen
-    /// Noise handshake pattern.
-    fn new(
-
-        identity: KeypairIdentity,
-        identity_x: IdentityExchange
-    ) -> Self {
-        let (id_remote_pubkey, send_identity) = match identity_x {
-            IdentityExchange::Mutual => (None, true),
-            IdentityExchange::Send { remote } => (Some(remote), true),
-            IdentityExchange::Receive => (None, false),
-            IdentityExchange::None { remote } => (Some(remote), false)
-        };
-
-        State {
-
-            identity,
-            dh_remote_pubkey_sig: None,
-            id_remote_pubkey,
-            send_identity
-        }
-    }
-}
+//impl State {
+//    /// Initializes the state for a new Noise handshake, using the given local
+//    /// identity keypair and local DH static public key. The handshake messages
+//    /// will be sent and received on the given I/O resource and using the
+//    /// provided session for cryptographic operations according to the chosen
+//    /// Noise handshake pattern.
+//    fn new(
+//
+//        identity: KeypairIdentity,
+//        identity_x: IdentityExchange
+//    ) -> Self {
+//        let (id_remote_pubkey, send_identity) = match identity_x {
+//            IdentityExchange::Mutual => (None, true),
+//            IdentityExchange::Send { remote } => (Some(remote), true),
+//            IdentityExchange::Receive => (None, false),
+//            IdentityExchange::None { remote } => (Some(remote), false)
+//        };
+//
+//        State {
+//
+//            identity,
+//            dh_remote_pubkey_sig: None,
+//            id_remote_pubkey,
+//            send_identity
+//        }
+//    }
+//}
 
 //impl State
 //{
@@ -116,78 +116,78 @@ pub enum IdentityExchange {
 
 /// A future for receiving a Noise handshake message with a payload
 /// identifying the remote.
-async fn recv_identity<T>(state: &mut State, mut socket: T) -> Result<(), String>
-    where
-        T: AsyncRead + Unpin,
-{
-    let mut len_buf = [0,0];
-    let res = socket.read_exact(&mut len_buf).await;
-    println!("len_buf res:{:?}", res);
-    let len = u16::from_be_bytes(len_buf) as usize;
-
-    let mut payload_buf = vec![0; len];
-   // let res = socket.read_exact(&mut payload_buf).await;
-   // println!("payload_buf res:{:?}", res);
-    let pb = match NoiseHandshakePayload::decode(&payload_buf[..]) {
-        Ok(prop) => prop,
-        Err(_) => {
-            println!("NoiseHandshakePayload::decode");
-            return Err("NoiseHandshakePayload::decode".to_string());
-         }
-    };
-
-
-
-    if !pb.identity_key.is_empty() {
-        let pk = identity::PublicKey::from_protobuf_encoding(&pb.identity_key)
-            .map_err(|_| "NoiseError::InvalidKey".to_string())?;
-        if let Some(ref k) = state.id_remote_pubkey {
-            if k != &pk {
-                return Err("NoiseError::InvalidKey".to_string())
-            }
-        }
-        state.id_remote_pubkey = Some(pk);
-    }
-    if !pb.identity_sig.is_empty() {
-        state.dh_remote_pubkey_sig = Some(pb.identity_sig);
-    }
-
-    Ok(())
-}
+//async fn recv_identity<T>(state: &mut State, mut socket: T) -> Result<(), String>
+//    where
+//        T: AsyncRead + Unpin,
+//{
+//    let mut len_buf = [0,0];
+//    let res = socket.read_exact(&mut len_buf).await;
+//    println!("len_buf res:{:?}", res);
+//    let len = u16::from_be_bytes(len_buf) as usize;
+//
+//    let mut payload_buf = vec![0; len];
+//   // let res = socket.read_exact(&mut payload_buf).await;
+//   // println!("payload_buf res:{:?}", res);
+//    let pb = match NoiseHandshakePayload::decode(&payload_buf[..]) {
+//        Ok(prop) => prop,
+//        Err(_) => {
+//            println!("NoiseHandshakePayload::decode");
+//            return Err("NoiseHandshakePayload::decode".to_string());
+//         }
+//    };
+//
+//
+//
+//    if !pb.identity_key.is_empty() {
+//        let pk = identity::PublicKey::from_protobuf_encoding(&pb.identity_key)
+//            .map_err(|_| "NoiseError::InvalidKey".to_string())?;
+//        if let Some(ref k) = state.id_remote_pubkey {
+//            if k != &pk {
+//                return Err("NoiseError::InvalidKey".to_string())
+//            }
+//        }
+//        state.id_remote_pubkey = Some(pk);
+//    }
+//    if !pb.identity_sig.is_empty() {
+//        state.dh_remote_pubkey_sig = Some(pb.identity_sig);
+//    }
+//
+//    Ok(())
+//}
 
 /// Send a Noise handshake message with a payload identifying the local node to the remote.
-async fn send_identity<T>(state: &mut State, mut socket: NoiseOutput<T>) -> Result<(), String>
+async fn send_identity<T>(socket: &mut NoiseOutput<T>) -> Result<(), String>
     where
-        T: AsyncWrite + Unpin,
+        T: AsyncWrite  +  AsyncRead + Send + Unpin + 'static
 {
     let mut pb = NoiseHandshakePayload::default();
-    if state.send_identity {
-        pb.identity_key = state.identity.public.clone().into_protobuf_encoding()
+    if socket.send_identity {
+        pb.identity_key = socket.identity.public.clone().into_protobuf_encoding()
     }
-    if let Some(ref sig) = state.identity.signature {
+    if let Some(ref sig) = socket.identity.signature {
         pb.identity_sig = sig.clone()
     }
     let mut buf = Vec::with_capacity(pb.encoded_len());
     pb.encode(&mut buf).expect("Vec<u8> provides capacity as needed");
-    let len = (buf.len() as u16).to_be_bytes();
-    // let res = socket.write_all(&len).await;
+   // let mut buf_len = (buf.len() as u16).to_be_bytes();
+    let res = socket.send(& mut buf).await;
     // let res = socket.write_all(&buf).await;
     //socket.flush().await;
     Ok(())
 }
 
 /// A future for sending a Noise handshake message with an empty payload.
-pub async fn send_empty<T>(state: &mut State, mut socket: NoiseOutput<T>) -> Result<(), String>
-    where
-        T: AsyncWrite + Unpin
-{
-    // let res = socket.write(&[]).await;
-    // let res = socket.flush().await;
-    Ok(())
-}
+//pub async fn send_empty<T>(state: &mut State, mut socket: NoiseOutput<T>) -> Result<(), String>
+//    where
+//        T: AsyncWrite + Unpin
+//{
+//    // let res = socket.write(&[]).await;
+//    // let res = socket.flush().await;
+//    Ok(())
+//}
 
 /// A future for receiving a Noise handshake message with an empty payload.
-pub async fn recv_empty<T>(state: &mut State, mut socket: NoiseOutput<T>) -> Result<(), String>
+pub async fn recv_empty<T>(socket: &mut NoiseOutput<T>) -> Result<(), String>
     where
         T: AsyncWrite  +  AsyncRead + Send + Unpin + 'static
 {
@@ -259,10 +259,9 @@ pub async fn rt15_responder<T>(
         T: AsyncWrite + AsyncRead + Unpin + Send + 'static,
 {
         //let noise_io =  Arc::new(Mutex::new(NoiseOutput::new(io, SnowState::Handshake(session))));
-        let noise_io =  NoiseOutput::new(io, SnowState::Handshake(session));
-        let mut state = State::new( identity, identity_x);
-        recv_empty(&mut state, noise_io).await;
-  //      send_identity(&mut state, noise_io.clone()).await;
+        let mut noise_io =  NoiseOutput::new(io, SnowState::Handshake(session), identity, identity_x);
+        recv_empty(&mut noise_io).await;
+        send_identity(&mut noise_io).await;
   //      recv_identity(&mut state, noise_io).await;
         //state.finish();
 }
