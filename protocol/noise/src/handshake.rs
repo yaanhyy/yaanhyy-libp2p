@@ -307,7 +307,7 @@ pub async fn rt15_responder<T>(
     session: snow::HandshakeState,
     identity: KeypairIdentity,
     identity_x: IdentityExchange
-)
+) -> Result<(RemoteIdentity, NoiseOutput<T>), String>
     where
         T: AsyncWrite + AsyncRead + Unpin + Send + 'static,
 {
@@ -316,11 +316,8 @@ pub async fn rt15_responder<T>(
         recv_empty(&mut noise_io).await;
         send_identity(&mut noise_io).await;
         recv_identity(&mut noise_io).await;
-        let res = finish(noise_io);
-        if let Ok((remote, mut noise_io)) = res {
-            let mut n = noise_io.read().await;
-            println!("data:{:?}", n.unwrap());
-        }
+        finish(noise_io)
+
 }
 
 mod tests {
@@ -346,7 +343,12 @@ mod tests {
                 .build_responder()
                 .map_err(|_|"NoiseError::from".to_string());
             if let Ok(state) = session {
-                rt15_responder(connec.clone(), state, config.dh_keys.into_identity(),IdentityExchange::Mutual).await;
+                let res = rt15_responder(connec.clone(), state, config.dh_keys.into_identity(),IdentityExchange::Mutual).await;
+                if let Ok((remote, mut noise_io)) = res {
+                    let mut n = noise_io.read().await;
+                    println!("data:{:?}", n.unwrap());
+                    noise_io.send(&mut "ok baby".as_bytes().to_vec()).await;
+                }
             }
         });
         Ok(())
