@@ -23,7 +23,7 @@ use std::{
 };
 use secio::identity::Keypair;
 
-use crate::gossipsub::{Rpc,ControlMessage, ControlGraft, rpc::SubOpts};
+use crate::gossipsub::{Rpc,ControlMessage, ControlGraft, ControlPrune, rpc::SubOpts};
 use crate::gossipsub::Message as SubMessage;
 use crate::topic::Topic;
 use yamux::Config;
@@ -32,8 +32,33 @@ use yamux::session::{Mode, ControlCommand, StreamCommand};
 use yamux::session::{get_stream, open_stream, subscribe_stream};
 use futures::prelude::*;
 use async_std::task;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub const MSG_MESHSUB_1_0: &[u8] = b"/meshsub/1.0.0\n";
+
+/// A type for gossipsub message ids.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MessageId(pub String);
+
+impl std::fmt::Display for MessageId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Into<String> for MessageId {
+    fn into(self) -> String {
+        self.0.into()
+    }
+}
+
+fn message_id(data: Vec<u8>) -> MessageId {
+    let mut s = DefaultHasher::new();
+    data.hash(&mut s);
+    MessageId(s.finish().to_string())
+}
+
 
 pub fn publish(local_peer_id: PeerId, topic: String, data: Vec<u8>) -> Rpc{
     let mut  rpc_in: Rpc =  Rpc {
@@ -94,8 +119,8 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
 
             task::spawn(async move {
 
-                //  loop {
                 let mut buf = None;
+                // not negotiate protocal, now first need negotiate the stream protocol
                 if !stream_protocol_flag {
                     stream_protocol_flag = true;
                     buf = data_receiver.next().await;
@@ -104,12 +129,14 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
                     println!("remote send receive1:{:?}", buf.clone());
                     buf = data_receiver.next().await;
                     data = buf.clone().unwrap();
-                    let ping_proto: Vec<u8> = data.drain(20..).collect();
+                    let mesh_proto: Vec<u8> = data.drain(20..).collect();
                     let mut stream_clone = stream_spawn.clone();
-//                  let frame = Frame::data(stream_clone.id(), data).unwrap();
-//                  stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
-                    //send back ping protocol for negotiate
-                    let frame = Frame::data(stream_clone.id(), ping_proto).unwrap();
+
+                    //send back multistream_select protocol
+                    let frame = Frame::data(stream_clone.id(), data).unwrap();
+                    stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
+                    //send back gossipsub protocol for negotiate
+                    let frame = Frame::data(stream_clone.id(), mesh_proto).unwrap();
                     stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
                     // let buf = std::str::from_utf8(&buf.unwrap()).unwrap().to_string();
                     println!("remote send receive2:{:?}", buf);
@@ -150,27 +177,33 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
 //                println!("rpc send vec:{:?}", rpc_buf);
 //                let frame = Frame::data(stream_spawn.id(), rpc_buf).unwrap();
 //                stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
-                buf = data_receiver.next().await;
-                println!("receive gossip msg body len :{:?}", buf);
-                buf = data_receiver.next().await;
-                println!("receive gossip msg body:{:?}", buf);
-                let mut  rpc_in: Rpc = match Rpc::decode(&buf.unwrap()[1..]) {
-                    Ok(rpc) => rpc,
-                    Err(_) => {
-                        println!("failed to parse remote's exchage protobuf message");
-                        return (); //Err("failed to parse remote's exchange protobuf".to_string());
+                loop {
+                    buf = data_receiver.next().await;
+                    println!("receive gossip msg body len :{:?}", buf);
+                    buf = data_receiver.next().await;
+                    println!("receive gossip msg body:{:?}", buf);
+                    let mut rpc_in: Rpc = match Rpc::decode(&buf.unwrap()[1..]) {
+                        Ok(rpc) => rpc,
+                        Err(_) => {
+                            println!("failed to parse remote's exchage protobuf message");
+                            return (); //Err("failed to parse remote's exchange protobuf".to_string());
+                        }
+                    };
+                    println!("rpc topic:{:?}", rpc_in.clone());
+
+                    for publish in rpc_in.publish {
+                        let id = PeerId::from_bytes(publish.from.unwrap());
+                        if let Some(data) = publish.data {
+                            let message_id = message_id(data);
+                            println!("get id {} rpc msg from:{:?}", message_id, id);
+                        }
                     }
-                };
-               println!("rpc topic:{:?}", rpc_in.clone());
-                let publish = rpc_in.publish.pop().unwrap();
-                let id = PeerId::from_bytes( publish.from.unwrap());
-                println!("rpc msg from:{:?}", id);
+                }
 
             });
             //break;
+
         }
-
-
     }else {
         println!("get_stream fail :{:?}", res);
     }
@@ -187,7 +220,7 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
         let mut data_receiver = stream.data_receiver.unwrap();
         let local_peer_id_clone =local_peer_id.clone();
         task::spawn(async move {
-          //  loop {
+                // get negotiate msg
                 let mut buf = data_receiver.next().await;
                 println!("client receive1:{:?}", buf);
                 buf = data_receiver.next().await;
@@ -196,6 +229,8 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
                 println!("client receive3:{:?}", buf);
                 buf = data_receiver.next().await;
                 println!("client receive4:{:?}", buf);
+
+                //send subscribe and graft info. become full-message node.
                 let mut  rpc_in: Rpc =  Rpc {
                     subscriptions: vec![
                         SubOpts{
@@ -210,6 +245,12 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
                 let rpc_graft = ControlGraft {
                     topic_id: Some("test-net".to_string()),
                 };
+
+
+                let rpc_prune = ControlPrune {
+                    topic_id: Some("test-net".to_string()),
+                };
+
                 // control messages
                 let mut control = ControlMessage {
                     ihave: Vec::new(),
@@ -217,8 +258,8 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
                     graft: Vec::new(),
                     prune: Vec::new(),
                 };
-                control.graft.push(rpc_graft);
-
+                //control.graft.push(rpc_prune);
+                control.prune.push(rpc_prune);
                 rpc_in.control = Some(control);
                 let mut rpc_buf: Vec<u8> = Vec::with_capacity(rpc_in.encoded_len());
                 rpc_in.encode(&mut rpc_buf)
@@ -242,7 +283,7 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
 
                 buf = data_receiver.next().await;
                 println!("client receive5:{:?}", buf);
-          //  }
+
         });
      //   loop {
             let mut data = Vec::new();

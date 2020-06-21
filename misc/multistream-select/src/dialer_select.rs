@@ -87,6 +87,10 @@ pub async fn dialer_select_proto_secio<R, W>(mut reader: Arc<Mutex<SecureHalfCon
     Err("not match proto".to_string())
 }
 
+pub async fn dialer_select_proto_yamux() {
+
+}
+
 #[test]
 fn ping_client_test() {
     init_log("debug");
