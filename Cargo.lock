@@ -2008,6 +2008,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "yaanhyy-kad"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "base64",
+ "bytes",
+ "futures 0.3.5",
+ "futures-util",
+ "log",
+ "multihash",
+ "parity-multiaddr",
+ "prost",
+ "rand",
+ "sha2",
+ "smallvec",
+ "unsigned-varint",
+ "utils",
+ "yaanhyy-identity",
+ "yaanhyy-multistream-select",
+ "yaanhyy-secio",
+ "yaanhyy-yamux",
+]
+
+[[package]]
 name = "yaanhyy-libp2p"
 version = "0.1.0"
 dependencies = [

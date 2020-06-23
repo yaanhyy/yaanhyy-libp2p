@@ -34,12 +34,15 @@ pub struct IdentifyInfo {
     /// Name and version of the peer, similar to the `User-Agent` header in
     /// the HTTP protocol.
     pub agent_version: String,
-    /// The addresses that the peer is listening on.
+    /// The addresses.rs that the peer is listening on.
     pub listen_addrs: Vec<Multiaddr>,
     /// The list of protocols supported by the peer, e.g. `/ipfs/ping/1.0.0`.
     pub protocols: Vec<String>,
 }
 
+pub fn identity_msg() {
+
+}
 
 #[test]
 fn identity_client_test() {

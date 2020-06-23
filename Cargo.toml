@@ -29,5 +29,6 @@ members = [
     "protocol/ping",
     "protocol/identity",
     "protocol/gossipsub",
-    "protocol/noise"
+    "protocol/noise",
+    "protocol/kad"
 ]
