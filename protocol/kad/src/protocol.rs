@@ -612,6 +612,8 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             println!("findnode struct:{:?}", find_node_resp.clone());
             let msg = proto_to_resp_msg(find_node_resp).unwrap();
             println!("KadResponseMsg:{:?}", msg.clone());
+            buf = data_receiver.next().await;
+            println!("receive remote  data:{:?}", buf);
 
         });
         //   loop {

@@ -30,5 +30,6 @@ members = [
     "protocol/identity",
     "protocol/gossipsub",
     "protocol/noise",
-    "protocol/kad"
+    "protocol/kad",
+    "misc/enr"
 ]
