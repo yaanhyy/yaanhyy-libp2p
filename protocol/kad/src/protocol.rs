@@ -4,7 +4,8 @@ use multistream_select::protocol::{get_varint_len, split_length_from_package, MS
 use std::sync::{Arc};
 use async_std::sync::Mutex;
 use secio::codec::{SecureHalfConnWrite, SecureHalfConnRead};
-use secio::identity::PublicKey;
+use secio::identity::{ PublicKey, ed25519::SecretKey};
+use secio::identity as secio_identity;
 use secio::peer_id::PeerId;
 use futures::{channel::{mpsc, oneshot}};
 use futures::{future, select, join};
@@ -36,6 +37,7 @@ use identity::protocol::IdentifyInfo;
 use super::dht as proto;
 use std::{io, iter};
 use super::record::{self, Record};
+use std::process::id;
 
 pub const MSG_PAD_1_0: &[u8] = b"/ipfs/kad/1.0.0\n";
 
@@ -612,6 +614,101 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             println!("findnode struct:{:?}", find_node_resp.clone());
             let msg = proto_to_resp_msg(find_node_resp).unwrap();
             println!("KadResponseMsg:{:?}", msg.clone());
+
+            //put value
+            let put_value_msg = KadRequestMsg::PutValue {key};
+            let put_value_proto = req_msg_to_proto(put_value_msg);
+            let mut bytes = Vec::with_capacity(put_value_proto.encoded_len());
+            put_value_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
+            let mut len:u8 = bytes.len() as u8;
+            println!("put value rpc send:{:?}", put_value_proto);
+            bytes.insert(0, len);
+            println!("put value send vec:{:?}", bytes);
+            let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
+            stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+            buf = data_receiver.next().await;
+            println!("receive findnode body len :{:?}", buf);
+            buf = data_receiver.next().await;
+            println!("receive findnode body:{:?}", buf);
+
+            buf = data_receiver.next().await;
+            println!("receive remote  data:{:?}", buf);
+
+        });
+        //   loop {
+        let mut data = Vec::new();
+
+        let mut len: u8 = MSG_MULTISTREAM_1_0.len() as u8;
+        data.push(len);
+        data.append(&mut MSG_MULTISTREAM_1_0.to_vec());
+
+
+        let frame = Frame::data(stream_clone.id(), data.clone()).unwrap();
+        //let frame = Frame::data(stream_clone.id(), format!("love and peace:{}", index).into_bytes()).unwrap();
+        stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
+
+        len = MSG_PAD_1_0.len() as u8;
+        data.clear();
+        data.push(len);
+        data.append(&mut MSG_PAD_1_0.to_vec());
+
+        let frame = Frame::data(stream_clone.id(), data).unwrap();
+        //let frame = Frame::data(stream_clone.id(), format!("love and peace:{}", index).into_bytes()).unwrap();
+        stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
+
+        //     task::sleep(Duration::from_secs(10)).await;
+        //  }
+    } else {
+        println!("fail open stream");
+    }
+}
+
+
+pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id: PeerId, localkey: Keypair) {
+    let res = open_stream(sender).await;
+    if let Ok(mut stream) = res {
+        let mut stream_clone = stream.clone();
+        let mut stream_spawn = stream.clone();
+        let mut data_receiver = stream.data_receiver.unwrap();
+        let local_peer_id_clone =local_peer_id.clone();
+        task::spawn(async move {
+            // get negotiate msg
+            let mut buf = data_receiver.next().await;
+            println!("client receive1:{:?}", buf);
+            buf = data_receiver.next().await;
+            println!("client receive2:{:?}", buf);
+            buf = data_receiver.next().await;
+            println!("client receive3:{:?}", buf);
+            buf = data_receiver.next().await;
+            println!("client receive4:{:?}", buf);
+
+            let key = localkey.public().into_protobuf_encoding();
+            let find_node_msg = KadRequestMsg::FindNode {key};
+            let find_node_proto = req_msg_to_proto(find_node_msg);
+            let mut bytes = Vec::with_capacity(find_node_proto.encoded_len());
+            find_node_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
+            let mut len:u8 = bytes.len() as u8;
+            println!("rpc send:{:?}", find_node_proto);
+            bytes.insert(0, len);
+            println!("rpc send vec:{:?}", bytes);
+            let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
+            stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+            buf = data_receiver.next().await;
+            println!("receive findnode body len :{:?}", buf);
+            buf = data_receiver.next().await;
+            println!("receive findnode body:{:?}", buf);
+            let mut find_node_resp: proto::Message = match proto::Message::decode(&buf.unwrap()[2..]) {
+                Ok(find_node_resp) => find_node_resp,
+                Err(_) => {
+                    println!("failed to parse remote's exchage protobuf message");
+                    return (); //Err("failed to parse remote's exchange protobuf".to_string());
+                }
+            };
+            println!("findnode struct:{:?}", find_node_resp.clone());
+            let msg = proto_to_resp_msg(find_node_resp).unwrap();
+            println!("KadResponseMsg:{:?}", msg.clone());
+
+            //put value
             buf = data_receiver.next().await;
             println!("receive remote  data:{:?}", buf);
 
@@ -660,8 +757,11 @@ fn kad_client_test() {
         if match_proto.is_ok() {
             let proto = match_proto.unwrap();
             if proto.eq(&"/secio/1.0.0\n".as_bytes().to_vec()) {
-                let local_key = Keypair::generate_ed25519();
+                //let local_key = Keypair::generate_ed25519();
+                let local_secret_key = secio_identity::secp256k1::SecretKey::from_bytes(vec![55u8; 32]).unwrap();
+                let local_key = Keypair::Secp256k1(secio_identity::secp256k1::Keypair::from(local_secret_key) );
                 let local_peer_id = PeerId::from(local_key.public());
+                println!("local_id:{:?}", local_peer_id.to_base58());
                 let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), local_key.clone(),Mode::Client).await.unwrap();
                 let arc_reader = session_reader.socket.clone();
                 let arc_writer = session_writer.socket.clone();
@@ -703,6 +803,49 @@ fn kad_client_test() {
             }
             connec.read_exact(&mut read_buf).await.unwrap();
             println!("read_buf:{:?}", read_buf );
+        }
+    })
+}
+
+#[test]
+fn kad_client1_test() {
+    init_log("trace");
+    async_std::task::block_on(async move {
+        let mut  connec = async_std::net::TcpStream::connect("104.131.131.82:4001").await.unwrap();
+        let mut  local_addr: std::net::SocketAddr = connec.local_addr().unwrap();
+        println!("localaddr:{:?}", local_addr);
+        let addr = format!("/ip4/{}/tcp/{}",local_addr.ip().to_string() ,local_addr.port());
+        println!("addr:{:?}", addr);
+        let mut local_addr = addr.parse().unwrap();
+        //  let mut local_addr = multiaddr!(local_addr.ip(), Tcp(local_addr.port() as u16));
+        let match_proto = dialer_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string(), "/yamux/1.0.0\n".to_string()], true).await;
+        if match_proto.is_ok() {
+            let proto = match_proto.unwrap();
+            if proto.eq(&"/secio/1.0.0\n".as_bytes().to_vec()) {
+                //let local_key = Keypair::generate_ed25519();
+                let local_secret_key = SecretKey::from_bytes(vec![11u8; 32]).unwrap();
+                let rar_key = secio_identity::ed25519::Keypair::from(local_secret_key);
+                let local_key = Keypair::Ed25519( rar_key.clone());
+                let random_bytes = rar_key.public().encode();
+                let mh1 = multihash::Sha2_256::digest(&random_bytes);
+                let node_id = PeerId::try_from(mh1).unwrap();
+                println!("node_id:{:?}", node_id);
+                let local_peer_id = PeerId::from(local_key.public());
+                println!("local_id:{:?}", local_peer_id);
+                let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), local_key.clone(),Mode::Client).await.unwrap();
+                let arc_reader = session_reader.socket.clone();
+                let arc_writer = session_writer.socket.clone();
+                let res = dialer_select_proto_secio(arc_reader.clone(), arc_writer.clone(), vec!["/yamux/1.0.0\n".to_string()]).await;
+                if res.is_ok() {
+                    println!("into yamux");
+                    let (control_sender, control_receiver) = mpsc::channel(10);
+                    let deal_remote_stream = remote_stream_deal(session_reader.stream_sender.clone(),control_sender.clone(), local_peer_id.clone(), local_key.clone(), local_addr);
+                    let period_send = period_send_1( control_sender,local_peer_id ,local_key);
+                    let receive_process = session_reader.receive_loop( control_receiver);
+                    let send_process = session_writer.send_process();
+                    join!{receive_process, send_process, deal_remote_stream, period_send};//
+                }
+            }
         }
     })
 }
