@@ -36,7 +36,7 @@ use identity::protocol::IdentifyInfo;
 //use super::dht::{Message, Record, message};
 use super::dht as proto;
 use std::{io, iter};
-use super::record::{self, Record};
+use super::record::{self, Record, Key};
 use std::process::id;
 
 pub const MSG_PAD_1_0: &[u8] = b"/ipfs/kad/1.0.0\n";
@@ -403,40 +403,41 @@ fn record_from_proto(record: proto::Record) -> Result<Record, io::Error> {
     let key = record::Key::from(record.key);
     let value = record.value;
 
-    let publisher =
-        if !record.publisher.is_empty() {
-            PeerId::from_bytes(record.publisher)
-                .map(Some)
-                .map_err(|_| invalid_data("Invalid publisher peer ID."))?
-        } else {
-            None
-        };
+//    let publisher =
+//        if !record.publisher.is_empty() {
+//            PeerId::from_bytes(record.publisher)
+//                .map(Some)
+//                .map_err(|_| invalid_data("Invalid publisher peer ID."))?
+//        } else {
+//            None
+//        };
+//
+//    let expires =
+//        if record.ttl > 0 {
+//            Some(Instant::now() + Duration::from_secs(record.ttl as u64))
+//        } else {
+//            None
+//        };
 
-    let expires =
-        if record.ttl > 0 {
-            Some(Instant::now() + Duration::from_secs(record.ttl as u64))
-        } else {
-            None
-        };
-
-    Ok(Record { key, value, publisher, expires })
+  //  Ok(Record { key, value, publisher, expires })
+    Ok(Record { key, value })
 }
 
 fn record_to_proto(record: Record) -> proto::Record {
     proto::Record {
         key: record.key.to_vec(),
         value: record.value,
-        publisher: record.publisher.map(PeerId::into_bytes).unwrap_or_default(),
-        ttl: record.expires
-            .map(|t| {
-                let now = Instant::now();
-                if t > now {
-                    (t - now).as_secs() as u32
-                } else {
-                    1 // because 0 means "does not expire"
-                }
-            })
-            .unwrap_or(0),
+        //publisher: record.publisher.map(PeerId::into_bytes).unwrap_or_default(),
+//        ttl: record.expires
+//            .map(|t| {
+//                let now = Instant::now();
+//                if t > now {
+//                    (t - now).as_secs() as u32
+//                } else {
+//                    1 // because 0 means "does not expire"
+//                }
+//            })
+//            .unwrap_or(0),
         time_received: String::new()
     }
 }
@@ -571,7 +572,7 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
     }
 }
 
-pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: PeerId, localkey: Keypair) {
+pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: PeerId, localkey: Keypair) { //, addr: multihash::Multihash
     let res = open_stream(sender).await;
     if let Ok(mut stream) = res {
         let mut stream_clone = stream.clone();
@@ -589,8 +590,9 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             buf = data_receiver.next().await;
             println!("client receive4:{:?}", buf);
 
-            let key = localkey.public().into_protobuf_encoding();
-            let find_node_msg = KadRequestMsg::FindNode {key};
+            //find node
+            let key = local_peer_id.into_bytes();
+            let find_node_msg = KadRequestMsg::FindNode {key:key.clone()};
             let find_node_proto = req_msg_to_proto(find_node_msg);
             let mut bytes = Vec::with_capacity(find_node_proto.encoded_len());
             find_node_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
@@ -616,20 +618,21 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             println!("KadResponseMsg:{:?}", msg.clone());
 
             //put value
-            let put_value_msg = KadRequestMsg::PutValue {key};
+            let record = Record{key: Key::from("/v/hello".to_string().as_bytes().to_vec() ) , value: vec![0x97,0x98]};
+            let put_value_msg = KadRequestMsg::PutValue {record};
             let put_value_proto = req_msg_to_proto(put_value_msg);
             let mut bytes = Vec::with_capacity(put_value_proto.encoded_len());
             put_value_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
             let mut len:u8 = bytes.len() as u8;
-            println!("put value rpc send:{:?}", put_value_proto);
+            println!("put value len:{} rpc send:{:?}", len, put_value_proto);
             bytes.insert(0, len);
             println!("put value send vec:{:?}", bytes);
             let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
             stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
             buf = data_receiver.next().await;
-            println!("receive findnode body len :{:?}", buf);
+            println!("receive put value body len :{:?}", buf);
             buf = data_receiver.next().await;
-            println!("receive findnode body:{:?}", buf);
+            println!("receive put value body:{:?}", buf);
 
             buf = data_receiver.next().await;
             println!("receive remote  data:{:?}", buf);
@@ -664,7 +667,7 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
 }
 
 
-pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id: PeerId, localkey: Keypair) {
+pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id: PeerId, localkey: Keypair, remote_key: Keypair) {
     let res = open_stream(sender).await;
     if let Ok(mut stream) = res {
         let mut stream_clone = stream.clone();
@@ -682,7 +685,70 @@ pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id:
             buf = data_receiver.next().await;
             println!("client receive4:{:?}", buf);
 
-            let key = localkey.public().into_protobuf_encoding();
+//            let remote_peer = remote_key.public().into_peer_id();
+//            println!("remote peerid:{}", remote_peer);
+//            let key = remote_peer.into_bytes();
+//            let find_node_msg = KadRequestMsg::FindNode {key};
+//            let find_node_proto = req_msg_to_proto(find_node_msg);
+//            let mut bytes = Vec::with_capacity(find_node_proto.encoded_len());
+//            find_node_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
+//            let mut len:u8 = bytes.len() as u8;
+//            println!("rpc send:{:?}", find_node_proto);
+//            bytes.insert(0, len);
+//            println!("rpc send vec:{:?}", bytes);
+//            let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
+//            stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+//            buf = data_receiver.next().await;
+//            println!("receive findnode body len :{:?}", buf);
+//            buf = data_receiver.next().await;
+//            println!("receive findnode body:{:?}", buf);
+//            let mut find_node_resp: proto::Message = match proto::Message::decode(&buf.unwrap()[2..]) {
+//                Ok(find_node_resp) => find_node_resp,
+//                Err(_) => {
+//                    println!("failed to parse remote's exchage protobuf message");
+//                    return (); //Err("failed to parse remote's exchange protobuf".to_string());
+//                }
+//            };
+//            println!("findnode struct:{:?}", find_node_resp.clone());
+//            let msg = proto_to_resp_msg(find_node_resp).unwrap();
+//            println!("KadResponseMsg:{:?}", msg.clone());
+//
+//            match msg {
+//                KadResponseMsg::FindNode{mut closer_peers} => {
+//                    for peer in closer_peers.iter_mut() {
+//                        println!("peer id:{:?}", peer);
+//                        let key =  peer.node_id.clone().into_bytes();
+//                        let find_node_msg = KadRequestMsg::FindNode {key};
+//                        let find_node_proto = req_msg_to_proto(find_node_msg);
+//                        let mut bytes = Vec::with_capacity(find_node_proto.encoded_len());
+//                        find_node_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
+//                        let mut len:u8 = bytes.len() as u8;
+//                        println!("rpc send:{:?}", find_node_proto);
+//                        bytes.insert(0, len);
+//                        println!("rpc send vec:{:?}", bytes);
+//                        let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
+//                        stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+//                        buf = data_receiver.next().await;
+//                        println!("receive findnode body len :{:?}", buf);
+//                        buf = data_receiver.next().await;
+//                        println!("receive findnode body:{:?}", buf);
+//                        let mut find_node_resp: proto::Message = match proto::Message::decode(&buf.unwrap()[2..]) {
+//                            Ok(find_node_resp) => find_node_resp,
+//                            Err(_) => {
+//                                println!("failed to parse remote's exchage protobuf message");
+//                                return (); //Err("failed to parse remote's exchange protobuf".to_string());
+//                            }
+//                        };
+//                        println!("remote_key findnode struct:{:?}", find_node_resp.clone());
+//                        let msg = proto_to_resp_msg(find_node_resp).unwrap();
+//                        println!("remote_key KadResponseMsg:{:?}", msg.clone());
+//                    }
+//                },
+//                _ => (),
+//            };
+
+
+            let key =  local_peer_id_clone.into_bytes();
             let find_node_msg = KadRequestMsg::FindNode {key};
             let find_node_proto = req_msg_to_proto(find_node_msg);
             let mut bytes = Vec::with_capacity(find_node_proto.encoded_len());
@@ -704,11 +770,40 @@ pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id:
                     return (); //Err("failed to parse remote's exchange protobuf".to_string());
                 }
             };
-            println!("findnode struct:{:?}", find_node_resp.clone());
+            println!("remote_key findnode struct:{:?}", find_node_resp.clone());
             let msg = proto_to_resp_msg(find_node_resp).unwrap();
+            println!("remote_key KadResponseMsg:{:?}", msg.clone());
+
+            //get value
+            let remote_key = remote_key.public().into_peer_id().into_bytes();
+            let get_value_msg = KadRequestMsg::GetValue {key: Key::from(remote_key)};
+            let get_value_proto = req_msg_to_proto(get_value_msg);
+            let mut bytes = Vec::with_capacity(get_value_proto.encoded_len());
+            get_value_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
+            let mut len:u8 = bytes.len() as u8;
+            println!("get value len:{} rpc send:{:?}", len, get_value_proto);
+            bytes.insert(0, len);
+            println!("get value send vec:{:?}", bytes);
+            let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
+            stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+            buf = data_receiver.next().await;
+            println!("receive get value body len :{:?}", buf);
+            buf = data_receiver.next().await;
+            println!("receive get value body:{:?}", buf);
+            let mut get_value_resp: proto::Message = match proto::Message::decode(&buf.unwrap()[2..]) {
+                Ok(get_value_resp) => get_value_resp,
+                Err(_) => {
+                    println!("failed to parse remote's exchage protobuf message");
+                    return (); //Err("failed to parse remote's exchange protobuf".to_string());
+                }
+            };
+            println!("get value struct:{:?}", get_value_resp.clone());
+            let msg = proto_to_resp_msg(get_value_resp).unwrap();
             println!("KadResponseMsg:{:?}", msg.clone());
 
-            //put value
+            buf = data_receiver.next().await;
+            println!("receive remote  data:{:?}", buf);
+
             buf = data_receiver.next().await;
             println!("receive remote  data:{:?}", buf);
 
@@ -758,10 +853,18 @@ fn kad_client_test() {
             let proto = match_proto.unwrap();
             if proto.eq(&"/secio/1.0.0\n".as_bytes().to_vec()) {
                 //let local_key = Keypair::generate_ed25519();
-                let local_secret_key = secio_identity::secp256k1::SecretKey::from_bytes(vec![55u8; 32]).unwrap();
-                let local_key = Keypair::Secp256k1(secio_identity::secp256k1::Keypair::from(local_secret_key) );
+//                let local_secret_key = secio_identity::secp256k1::SecretKey::from_bytes(vec![55u8; 32]).unwrap();
+//                let rar_key = secio_identity::secp256k1::Keypair::from(local_secret_key);
+//                let local_key = Keypair::Secp256k1( rar_key.clone());
+                let local_secret_key = SecretKey::from_bytes(vec![55u8; 32]).unwrap();
+                let rar_key = secio_identity::ed25519::Keypair::from(local_secret_key);
+                let local_key = Keypair::Ed25519( rar_key.clone());
+//                let random_bytes = rar_key.public().encode();
+//                let mh1 = multihash::Sha2_256::digest(&random_bytes);
+//                let node_id = PeerId::try_from(mh1.clone()).unwrap();
+//                println!("node_id:{:?}", node_id);
                 let local_peer_id = PeerId::from(local_key.public());
-                println!("local_id:{:?}", local_peer_id.to_base58());
+                println!("local_id:{:?}", local_peer_id);
                 let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), local_key.clone(),Mode::Client).await.unwrap();
                 let arc_reader = session_reader.socket.clone();
                 let arc_writer = session_writer.socket.clone();
@@ -832,6 +935,16 @@ fn kad_client1_test() {
                 println!("node_id:{:?}", node_id);
                 let local_peer_id = PeerId::from(local_key.public());
                 println!("local_id:{:?}", local_peer_id);
+
+
+
+                let retmoe_secret_key = SecretKey::from_bytes(vec![55u8; 32]).unwrap();
+                let rar_key_retmoe = secio_identity::ed25519::Keypair::from(retmoe_secret_key);
+                let retmoe_key = Keypair::Ed25519( rar_key_retmoe.clone());
+                let random_bytes = rar_key_retmoe.public().encode();
+                let mh1 = multihash::Sha2_256::digest(&random_bytes);
+                let node_id_remote = PeerId::try_from(mh1).unwrap();
+
                 let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), local_key.clone(),Mode::Client).await.unwrap();
                 let arc_reader = session_reader.socket.clone();
                 let arc_writer = session_writer.socket.clone();
@@ -840,7 +953,7 @@ fn kad_client1_test() {
                     println!("into yamux");
                     let (control_sender, control_receiver) = mpsc::channel(10);
                     let deal_remote_stream = remote_stream_deal(session_reader.stream_sender.clone(),control_sender.clone(), local_peer_id.clone(), local_key.clone(), local_addr);
-                    let period_send = period_send_1( control_sender,local_peer_id ,local_key);
+                    let period_send = period_send_1( control_sender,local_peer_id ,local_key, retmoe_key);
                     let receive_process = session_reader.receive_loop( control_receiver);
                     let send_process = session_writer.send_process();
                     join!{receive_process, send_process, deal_remote_stream, period_send};//

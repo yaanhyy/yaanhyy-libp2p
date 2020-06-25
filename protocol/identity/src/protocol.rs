@@ -21,8 +21,8 @@ use std::{
     net::{Ipv4Addr, Ipv6Addr},
     str::FromStr
 };
-
-
+use secio::identity as secio_identity;
+use secio::identity::Keypair;
 /// Information of a peer sent in `Identify` protocol responses.
 #[derive(Debug, Clone)]
 pub struct IdentifyInfo {
@@ -53,7 +53,10 @@ fn identity_client_test() {
         if match_proto.is_ok() {
             let proto = match_proto.unwrap();
             if proto.eq(&"/secio/1.0.0\n".as_bytes().to_vec()) {
-                let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), Mode::Client).await.unwrap();
+                let local_secret_key = secio_identity::secp256k1::SecretKey::from_bytes(vec![55u8; 32]).unwrap();
+                let rar_key = secio_identity::secp256k1::Keypair::from(local_secret_key);
+                let local_key = Keypair::Secp256k1( rar_key.clone());
+                let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), local_key, Mode::Client).await.unwrap();
                 let arc_reader = session_reader.socket.clone();
                 let arc_writer = session_writer.socket.clone();
                 let res = dialer_select_proto_secio(arc_reader, arc_writer, vec!["/yamux/1.0.0\n".to_string()]).await;
@@ -84,6 +87,7 @@ fn identity_client_test() {
                 }
             };
             println!("Identify:{:?}", identify_in );
+            let pubkey = PublicKey::from_protobuf_encoding(&identify_in.public_key.unwrap());
             for addr in identify_in.listen_addrs.iter_mut() {
 //                let len = addr.len();
 //                let mut array = [0u8; 100];
@@ -109,7 +113,10 @@ fn identity_server_test() {
 
             let proto = match_proto.unwrap();
             if proto.eq(&"/secio/1.0.0\n".to_string()) {
-                let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), Mode::Client).await.unwrap();
+                let local_secret_key = secio_identity::secp256k1::SecretKey::from_bytes(vec![55u8; 32]).unwrap();
+                let rar_key = secio_identity::secp256k1::Keypair::from(local_secret_key);
+                let local_key = Keypair::Secp256k1( rar_key.clone());
+                let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), local_key, Mode::Client).await.unwrap();
                 let arc_reader = session_reader.socket.clone();
                 let arc_writer = session_writer.socket.clone();
                 let res = listener_select_proto_secio(arc_reader, arc_writer, vec!["/yamux/1.0.0\n".to_string()]).await;

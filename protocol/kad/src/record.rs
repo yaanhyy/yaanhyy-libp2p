@@ -76,10 +76,10 @@ pub struct Record {
     pub key: Key,
     /// Value of the record.
     pub value: Vec<u8>,
-    /// The (original) publisher of the record.
-    pub publisher: Option<PeerId>,
-    /// The expiration time as measured by a local, monotonic clock.
-    pub expires: Option<Instant>,
+//    /// The (original) publisher of the record.
+//    pub publisher: Option<PeerId>,
+//    /// The expiration time as measured by a local, monotonic clock.
+//    pub expires: Option<Instant>,
 }
 
 impl Record {
@@ -91,15 +91,15 @@ impl Record {
         Record {
             key: key.into(),
             value,
-            publisher: None,
-            expires: None,
+//            publisher: None,
+//            expires: None,
         }
     }
 
-    /// Checks whether the record is expired w.r.t. the given `Instant`.
-    pub fn is_expired(&self, now: Instant) -> bool {
-        self.expires.map_or(false, |t| now >= t)
-    }
+    // Checks whether the record is expired w.r.t. the given `Instant`.
+//    pub fn is_expired(&self, now: Instant) -> bool {
+//        self.expires.map_or(false, |t| now >= t)
+//    }
 }
 
 /// A record stored in the DHT whose value is the ID of a peer

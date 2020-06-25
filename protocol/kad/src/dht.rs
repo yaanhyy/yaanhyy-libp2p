@@ -17,14 +17,6 @@ pub struct Record {
     /// Time the record was received, set by receiver
     #[prost(string, tag="5")]
     pub time_received: std::string::String,
-    /// The original publisher of the record.
-    /// Currently specific to rust-libp2p.
-    #[prost(bytes, tag="666")]
-    pub publisher: std::vec::Vec<u8>,
-    /// The remaining TTL of the record, in seconds.
-    /// Currently specific to rust-libp2p.
-    #[prost(uint32, tag="777")]
-    pub ttl: u32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Message {
@@ -33,8 +25,6 @@ pub struct Message {
     pub r#type: i32,
     /// defines what coral cluster level this query/response belongs to.
     /// in case we want to implement coral's cluster rings in the future.
-    ///
-    /// NOT USED
     #[prost(int32, tag="10")]
     pub cluster_level_raw: i32,
     /// Used to specify the key associated with this message.

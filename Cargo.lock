@@ -2112,6 +2112,7 @@ dependencies = [
  "multihash",
  "parity-multiaddr",
  "prost",
+ "prost-build",
  "rand",
  "sha2",
  "smallvec",
