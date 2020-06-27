@@ -39,7 +39,7 @@ use std::{io, iter};
 use super::record::{self, Record, Key};
 use std::process::id;
 
-pub const MSG_PAD_1_0: &[u8] = b"/test/kad/1.0.0\n";
+pub const MSG_PAD_1_0: &[u8] = b"/ipfs/kad/1.0.0\n";
 
 /// Creates an `io::Error` with `io::ErrorKind::InvalidData`.
 fn invalid_data<E>(e: E) -> io::Error
@@ -566,13 +566,13 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
                         public_key: localkey_clone.public(),
                         /// Version of the protocol family used by the peer, e.g. `ipfs/1.0.0`
                          /// or `polkadot/1.0.0`.
-                        protocol_version: "test/1.0.0".into(),
+                        protocol_version: "ipfs/1.0.0".into(),
                         agent_version: "rust-ipfs-kad".into(),
                         listen_addrs: vec![
                             local_addr_clone,
                         ],
                         /// The list of protocols supported by the peer, e.g. `/ipfs/ping/1.0.0`.
-                        protocols: vec!["/test/kad/1.0.0".to_string()],
+                        protocols: vec!["/ipfs/kad/1.0.0".to_string()],
                     };
 
                     let observed_addr: Multiaddr = "/ip4/104.131.131.82/tcp/4001".parse().unwrap();
@@ -656,7 +656,16 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             println!("receive findnode body len :{:?}", buf);
             buf = data_receiver.next().await;
             println!("receive findnode body:{:?}", buf);
-            let mut find_node_resp: proto::Message = match proto::Message::decode(&buf.unwrap()[1..]) {
+            let mut body = buf.unwrap();
+            loop {
+                if (body[0] & 0x80) == 0x80 {
+                    body.remove(0);
+                } else {
+                    body.remove(0);
+                    break;
+                }
+            }
+            let mut find_node_resp: proto::Message = match proto::Message::decode(&body[..]) {
                 Ok(find_node_resp) => find_node_resp,
                 Err(_) => {
                     println!("failed to parse find_node_resp message");
@@ -668,10 +677,13 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             println!("KadResponseMsg:{:?}", msg.clone());
 
             //put value
-            //let key = hex::decode("2f706b2f0024080112206f1581709bb7b1ef030d210db18e3b0ba1c776fba65d8cdaad05415142d189f8").unwrap();
-           // let key = "/pk/hello".to_string().as_bytes().to_vec().append(&mut key);
-            let record = Record{key: Key::from("/v/hello".to_string().as_bytes().to_vec() ) , value: vec![0x97,0x98]};
-            let put_value_msg = KadRequestMsg::PutPubValue {key:"/v/hello".to_string().as_bytes().to_vec(),  value: vec![0x97,0x98]};
+            let mut id = hex::decode("0024080112206f1581709bb7b1ef030d210db18e3b0ba1c776fba65d8cdaad05415142d189f8").unwrap();
+            let mut record = "/pk/".to_string().as_bytes().to_vec();
+            record.append(&mut id);
+            //let mut record = "/pk/hello".to_string().as_bytes().to_vec();
+
+            // let record = Record{key: Key::from("/pk/hello".to_string().as_bytes().to_vec() ) , value: vec![0x97,0x98]};
+            let put_value_msg = KadRequestMsg::PutPubValue {key: record,  value: key};
             let put_value_proto = req_msg_to_proto(put_value_msg);
             let mut bytes = Vec::with_capacity(put_value_proto.encoded_len());
             put_value_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
@@ -854,9 +866,11 @@ pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id:
             println!("remote_key KadResponseMsg:{:?}", msg.clone());
 
             //get value
-         //   let remote_key = remote_key.public().into_peer_id().into_bytes();
-          //  let get_value_msg = KadRequestMsg::GetValue {key: Key::from(remote_key)};
-            let get_value_msg = KadRequestMsg::GetPubValue {key:"/v/hello".to_string().as_bytes().to_vec()};
+            let mut id = hex::decode("0024080112206f1581709bb7b1ef030d210db18e3b0ba1c776fba65d8cdaad05415142d189f8").unwrap();
+            let mut put_key = "/pk/".to_string().as_bytes().to_vec();
+            put_key.append(&mut id);
+            let get_value_msg = KadRequestMsg::GetPubValue {key:put_key};
+         //   let get_value_msg = KadRequestMsg::GetPubValue {key:"/v/hello".to_string().as_bytes().to_vec()};
             let get_value_proto = req_msg_to_proto(get_value_msg);
             let mut bytes = Vec::with_capacity(get_value_proto.encoded_len());
             get_value_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
@@ -930,7 +944,7 @@ pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id:
 fn kad_client_test() {
     init_log("trace");
     async_std::task::block_on(async move {
-      //  let mut  connec = async_std::net::TcpStream::connect("104.131.131.82:4001").await.unwrap();
+        //let mut  connec = async_std::net::TcpStream::connect("104.131.131.82:4001").await.unwrap();
         let mut  connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
         let mut  local_addr: std::net::SocketAddr = connec.local_addr().unwrap();
         println!("localaddr:{:?}", local_addr);
