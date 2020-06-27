@@ -11,6 +11,15 @@ pub async fn write_varint(socket: &mut (impl AsyncWrite + Unpin), len: usize)
     Ok(())
 }
 
+pub fn insert_frame_len(mut raw_data: Vec<u8>) -> Vec<u8>{
+    let mut len_data = unsigned_varint::encode::usize_buffer();
+    let len= raw_data.len();
+    let encoded_len = unsigned_varint::encode::usize(len, &mut len_data).len();
+    let mut head_length = len_data[..encoded_len].to_vec();
+    head_length.append(& mut raw_data);
+    head_length
+}
+
 pub fn init_log(log_level: &str){
     use std::io::Write;
     use chrono::Local;
@@ -28,4 +37,11 @@ pub fn init_log(log_level: &str){
         )
     }).init();
     debug!("log config success")
+}
+
+#[test]
+fn insert_frame_len_test() {
+    let mut raw = vec![0x55u8; 131];
+    let raw = insert_frame_len(raw);
+    println!("insert data:{:?}", raw);
 }

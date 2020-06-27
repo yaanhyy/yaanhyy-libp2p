@@ -1,5 +1,5 @@
 use futures::prelude::*;
-use utils::{init_log, write_varint};
+use utils::{init_log, write_varint, insert_frame_len};
 use multistream_select::protocol::{get_varint_len, split_length_from_package, MSG_MULTISTREAM_1_0, upgrade_secio_protocol, get_conn_varint_len};
 use std::sync::{Arc};
 use async_std::sync::Mutex;
@@ -687,9 +687,10 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             let put_value_proto = req_msg_to_proto(put_value_msg);
             let mut bytes = Vec::with_capacity(put_value_proto.encoded_len());
             put_value_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
-            let mut len:u8 = bytes.len() as u8;
+            let mut len:u32 = bytes.len() as u32;
             println!("put value len:{} rpc send:{:?}", len, put_value_proto);
-            bytes.insert(0, len);
+            let mut bytes = insert_frame_len(bytes);
+
             println!("put value send vec:{:?}", bytes);
             let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
             stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
