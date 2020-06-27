@@ -641,7 +641,7 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             println!("client receive4:{:?}", buf);
 
             //find node
-            let key = local_peer_id.into_bytes();
+            let mut key = local_peer_id.into_bytes();
             let find_node_msg = KadRequestMsg::FindNode {key:key.clone()};
             let find_node_proto = req_msg_to_proto(find_node_msg);
             let mut bytes = Vec::with_capacity(find_node_proto.encoded_len());
@@ -677,13 +677,14 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
             println!("KadResponseMsg:{:?}", msg.clone());
 
             //put value
-            let mut id = hex::decode("0024080112206f1581709bb7b1ef030d210db18e3b0ba1c776fba65d8cdaad05415142d189f8").unwrap();
+            //let mut id = hex::decode("0024080112206f1581709bb7b1ef030d210db18e3b0ba1c776fba65d8cdaad05415142d189f8").unwrap();
             let mut record = "/pk/".to_string().as_bytes().to_vec();
-            record.append(&mut id);
+            record.append(&mut key);
             //let mut record = "/pk/hello".to_string().as_bytes().to_vec();
 
             // let record = Record{key: Key::from("/pk/hello".to_string().as_bytes().to_vec() ) , value: vec![0x97,0x98]};
-            let put_value_msg = KadRequestMsg::PutPubValue {key: record,  value: key};
+            let pubkey = localkey.public().into_protobuf_encoding();
+            let put_value_msg = KadRequestMsg::PutPubValue {key: record,  value: pubkey};
             let put_value_proto = req_msg_to_proto(put_value_msg);
             let mut bytes = Vec::with_capacity(put_value_proto.encoded_len());
             put_value_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
@@ -831,8 +832,8 @@ pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id:
 //            };
 
 
-            let key =  local_peer_id_clone.into_bytes();
-            let find_node_msg = KadRequestMsg::FindNode {key};
+            let mut key =  local_peer_id_clone.into_bytes();
+            let find_node_msg = KadRequestMsg::FindNode {key:key.clone()};
             let find_node_proto = req_msg_to_proto(find_node_msg);
             let mut bytes = Vec::with_capacity(find_node_proto.encoded_len());
             find_node_proto.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
@@ -867,10 +868,10 @@ pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id:
             println!("remote_key KadResponseMsg:{:?}", msg.clone());
 
             //get value
-            let mut id = hex::decode("0024080112206f1581709bb7b1ef030d210db18e3b0ba1c776fba65d8cdaad05415142d189f8").unwrap();
-            let mut put_key = "/pk/".to_string().as_bytes().to_vec();
-            put_key.append(&mut id);
-            let get_value_msg = KadRequestMsg::GetPubValue {key:put_key};
+            let mut remote = remote_key.public().into_peer_id().into_bytes();
+            let mut get_key = "/pk/".to_string().as_bytes().to_vec();
+            get_key.append(&mut remote);
+            let get_value_msg = KadRequestMsg::GetPubValue {key:get_key};
          //   let get_value_msg = KadRequestMsg::GetPubValue {key:"/v/hello".to_string().as_bytes().to_vec()};
             let get_value_proto = req_msg_to_proto(get_value_msg);
             let mut bytes = Vec::with_capacity(get_value_proto.encoded_len());
