@@ -2108,6 +2108,7 @@ dependencies = [
  "bytes",
  "futures 0.3.5",
  "futures-util",
+ "hex",
  "log",
  "multihash",
  "parity-multiaddr",
