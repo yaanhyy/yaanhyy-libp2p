@@ -559,15 +559,19 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
                 }
 
                 //protocols same to protocol it support in kad-ht , protocol_version use the first field of protocol and version
+                //validRTPeer->
                 if proto_clone.eq(&"/ipfs/id/1.0.0\n".as_bytes().to_vec()) ||
                     proto.eq(&"/ipfs/id/1.0.0\n".as_bytes().to_vec())  {
                     let info = IdentifyInfo {
                         public_key: localkey_clone.public(),
+                        /// Version of the protocol family used by the peer, e.g. `ipfs/1.0.0`
+                         /// or `polkadot/1.0.0`.
                         protocol_version: "test/1.0.0".into(),
                         agent_version: "rust-ipfs-kad".into(),
                         listen_addrs: vec![
                             local_addr_clone,
                         ],
+                        /// The list of protocols supported by the peer, e.g. `/ipfs/ping/1.0.0`.
                         protocols: vec!["/test/kad/1.0.0".to_string()],
                     };
 
