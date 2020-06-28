@@ -28,9 +28,15 @@ fn it_works() {
     println!("base64_string_ed25519:{:?}", base64_string_ed25519);
 
     let decoded_enr_eth2: Enr<SecretKey> = env.to_string().parse().unwrap();
-    println!("decoded_enr_eth2:{:?}", decoded_enr_eth2.ip() );
-    println!("decoded_enr_eth2:{:?}", decoded_enr_eth2.public_key() );
-    println!("decoded_enr_eth2:{:?}", decoded_enr_eth2.udp() );
+    println!("decoded_enr_eth2 ip:{:?}", decoded_enr_eth2.ip() );
+    println!("decoded_enr_eth2 pubkey:{:?}", decoded_enr_eth2.public_key() );
+    println!("decoded_enr_eth2 udp port:{:?}", decoded_enr_eth2.udp());
+    println!("decoded_enr_eth2 tcp port:{:?}", decoded_enr_eth2.tcp() );
+    println!("decoded_enr_eth2 node id:{:?}", decoded_enr_eth2.node_id() );
+    println!("decoded_enr_eth2 signature:{:?}", decoded_enr_eth2.signature() );
+    println!("decoded_enr_eth2 verify:{:?}", decoded_enr_eth2.verify() );
+    println!("decoded_enr_eth2 seq:{:?}", decoded_enr_eth2.seq() );
+    println!("decoded_enr_eth2 id:{:?}", decoded_enr_eth2.id() );
 // decode base64 strings of varying key types
 // decode the secp256k1 with default Enr
    // let decoded_enr_secp256k1: Enr = base64_string_secp256k1.parse().unwrap();

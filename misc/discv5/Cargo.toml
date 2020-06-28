@@ -7,3 +7,33 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+libsecp256k1 = { version = "0.3.1" }
+async-std = "1.0"
+futures = "0.3.5"
+futures-util = "0.3.5"
+prost = "0.6.1"
+utils = {path = "../../utils"}
+secio = { package="yaanhyy-secio", rev = '16421be27a37337526110c7f739b1c91d8414988', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
+yamux = { package="yaanhyy-yamux", rev = '83ef900e6948596ba923cab3b222306b0dc0cb13', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
+multistream-select = {package="yaanhyy-multistream-select", path="../../misc/multistream-select"}
+identity = {package="yaanhyy-identity", path="../../protocol/identity"}
+log = "0.4.8"
+sha2 = "0.8.1"
+base64 = "0.11.0"
+unsigned-varint = { version = "0.3.0", features = ["futures-codec"] }
+bytes = "0.5.4"
+rand = "0.7.3"
+smallvec = "1.0"
+multihash = "0.11.0"
+multiaddr = { package = "parity-multiaddr", version = "0.9.0"}
+hex = "*"
+rlp = "0.4.3"
+enr = { version = "*", features = ["serde", "ed25519", "rust-secp256k1"] }
+
+[dev-dependencies]
+quickcheck = "0.9.0"
+env_logger = "0.6.1"
+simple_logger = "1.3.0"
+tokio = "0.1.22"
+rand_xorshift = "0.2.0"
+rand_core = "0.5.1"
