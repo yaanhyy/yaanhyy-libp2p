@@ -905,6 +905,13 @@ pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id:
             println!("get value struct:{:?}", get_value_resp.clone());
             let msg = proto_to_resp_msg(get_value_resp).unwrap();
             println!("KadResponseMsg:{:?}", msg.clone());
+            match msg {
+                KadResponseMsg::GetValue {record, closer_peers } => {
+                   let peer_id = PublicKey::from_protobuf_encoding(&record.unwrap().value).unwrap().into_peer_id();
+                    println!("get value remote node id:{:?}", peer_id);
+                },
+                _ => (),
+            }
 
             buf = data_receiver.next().await;
             println!("receive remote  data:{:?}", buf);
@@ -946,8 +953,8 @@ pub async fn period_send_1( sender: mpsc::Sender<ControlCommand>, local_peer_id:
 fn kad_client_test() {
     init_log("trace");
     async_std::task::block_on(async move {
-        //let mut  connec = async_std::net::TcpStream::connect("104.131.131.82:4001").await.unwrap();
-        let mut  connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
+        let mut  connec = async_std::net::TcpStream::connect("104.131.131.82:4001").await.unwrap();
+       // let mut  connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
         let mut  local_addr: std::net::SocketAddr = connec.local_addr().unwrap();
         println!("localaddr:{:?}", local_addr);
         let addr = format!("/ip4/{}/tcp/{}",local_addr.ip().to_string() ,local_addr.port());
@@ -1020,8 +1027,8 @@ fn kad_client_test() {
 fn kad_client1_test() {
     init_log("trace");
     async_std::task::block_on(async move {
-        //let mut  connec = async_std::net::TcpStream::connect("104.131.131.82:4001").await.unwrap();
-        let mut  connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
+        let mut  connec = async_std::net::TcpStream::connect("104.131.131.82:4001").await.unwrap();
+      //  let mut  connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
         let mut  local_addr: std::net::SocketAddr = connec.local_addr().unwrap();
         println!("localaddr:{:?}", local_addr);
         let addr = format!("/ip4/{}/tcp/{}",local_addr.ip().to_string() ,local_addr.port());
