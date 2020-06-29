@@ -12,6 +12,6 @@ pub struct Handler {
     /// The local ENR.
     pub enr: Enr<CombinedKey>,
     /// The key to sign the ENR and set up encrypted communication with peers.
-    pub key: Arc<CombinedKey>,
+    pub key: CombinedKey,
     pub active_requests_auth: HashMap<AuthTag, NodeAddress>,
 }

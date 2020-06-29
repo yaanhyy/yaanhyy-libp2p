@@ -134,7 +134,8 @@ mod tests {
                 // A fixed key for testing
                 let raw_key = hex!("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291");
                 let secret_key = secp256k1::SecretKey::parse_slice(&raw_key).unwrap();
-                let mut enr_key = Arc::new(enr::CombinedKey::from(secret_key));
+                let mut enr_key = enr::CombinedKey::from(secret_key.clone());
+                let mut enr_key_1 = enr::CombinedKey::from(secret_key);
 
                 let local_addr: SocketAddr = socket.local_addr().unwrap();
                 println!("local addr:{:?}", local_addr);
@@ -144,7 +145,7 @@ mod tests {
                     builder.ip(local_addr.ip() );
                     // if a port was specified, use it
                     builder.udp(local_addr.port());
-                    builder.build(&enr_key.borrow()).unwrap()
+                    builder.build(&enr_key).unwrap()
                 };
                 //let addr = "176.9.51.216:25578";
                 //let addr = "127.0.0.1:9000";
@@ -185,7 +186,7 @@ mod tests {
 //                    }
 //                };
 
-                let mut handler = Handler {enr: enr.clone(), key: enr_key, node_id: local_id, active_requests_auth: HashMap::new()};
+                let mut handler = Handler {enr: enr.clone(), key: enr_key_1, node_id: local_id, active_requests_auth: HashMap::new()};
                 let packet = Packet::random(tag);
                 println!("remote addr:{:?}", remote_enr.udp());
                 let send = socket.send_to(&packet.encode(), &remote_enr.udp_socket().unwrap().to_string()).await;
@@ -193,6 +194,7 @@ mod tests {
                     println!("Sent {} bytes to {:?}", send, remote_enr.udp_socket());
                     let mut recv_buffer = [0u8; 1024];
                     let (n, peer) = socket.recv_from(&mut recv_buffer).await.unwrap();
+                    println!("Received {} bytes from {}", n, peer);
                     let resp = Packet::decode(&recv_buffer[..n], &magic).unwrap();
                     let auth_tag = packet.auth_tag().expect("No challenges here");
 
@@ -201,7 +203,7 @@ mod tests {
                         socket_addr: remote_enr.udp_socket().unwrap(),
                     };
                     handler.active_requests_auth.insert(*auth_tag, remote_addr);
-                    println!("Received {} bytes from {}, resp: {:?}", n, peer, resp);
+                    println!("resp: {:?}", resp);
 
 
                     // Generate a new session and authentication packet
@@ -212,7 +214,7 @@ mod tests {
                                 tag,
                                 &remote_id,
                                 remote_enr.public_key(),
-                                enr_key,
+                                &enr_key,
                                 Some(remote_enr),
                                 &local_id,
                                 &id_nonce,

@@ -156,7 +156,7 @@ impl Session {
         tag: Tag,
         remote_id: &NodeId,
         remote_key: CombinedPublicKey,
-        local_key: Arc<CombinedKey>,
+        local_key: &CombinedKey,
         updated_enr: Option<Enr<CombinedKey>>,
         local_node_id: &NodeId,
         id_nonce: &Nonce,
