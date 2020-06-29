@@ -7,8 +7,8 @@ use rand::Rng;
 
 #[test]
 fn it_works() {
-    let mut env = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
-
+   // let mut env = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
+    let mut env = "enr:-IS4QDOKuguplQtow8zjKEDXvzqT4K5XUjzZtmvluM8POGOVXP-euJjRnEEh8LMFXONBlJwfui5g_ehd5npZ0ZuDQksBgmlkgnY0gmlwhAAAAACJc2VjcDI1NmsxoQKtB3pwsjc32gv9KR9HY_3QI5Fjf6_aM-bjqUyrUHKZH4N1ZHCCIyg";
 
 // generate a random secp256k1 key
     let mut rng = thread_rng();

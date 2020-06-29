@@ -105,12 +105,19 @@ mod tests {
     use utils::{init_log, write_varint, insert_frame_len};
     use async_std::net::UdpSocket;
     use crate::rpc::{Message, Request, RequestBody};
-    use std::net::SocketAddr;
-    use enr::{Enr, secp256k1::SecretKey};
-    use crate::packet::Packet;
+    use enr::{Enr, secp256k1::SecretKey, CombinedKey};
+    use crate::packet::{Magic, Packet};
     use hex;
     use super::tag;
     use hex_literal::*;
+    use sha2::{Digest, Sha256};
+    use crate::handler::Handler;
+    use std::{collections::HashMap, default::Default, net::SocketAddr, sync::atomic::Ordering};
+    use crate::node_info::NodeAddress;
+    use crate::session::Session;
+    use log::error;
+    use std::sync::Arc;
+    use core::borrow::Borrow;
 
     #[test]
     fn discv5_client_test() {
@@ -118,26 +125,29 @@ mod tests {
         async_std::task::block_on(async move {
             let res = UdpSocket::bind("0.0.0.0:0").await;
             if let Ok(socket) = res {
-                let remote_enr_str = "enr:-HW4QKIEjXpNMoSDXFQZJMe9fxzoKfbW_KUt7zsntRhkUm-nAKz25tAVCDfTvd7_TQrcGJEoIXZ9r3pLvCw5t2lgLn8BgmlkgnY0iXNlY3AyNTZrMaECu0uvMqiJn8dxPz_ajgxeaLOBDSeRcNuZniBVACNRUnE";
-                let remote_enr: Enr<SecretKey> = remote_enr_str.to_string().parse().unwrap();
+                let remote_enr_str = "enr:-IS4QDOKuguplQtow8zjKEDXvzqT4K5XUjzZtmvluM8POGOVXP-euJjRnEEh8LMFXONBlJwfui5g_ehd5npZ0ZuDQksBgmlkgnY0gmlwhAAAAACJc2VjcDI1NmsxoQKtB3pwsjc32gv9KR9HY_3QI5Fjf6_aM-bjqUyrUHKZH4N1ZHCCIyg";
+               // let remote_enr_str = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
+                //let remote_enr: Enr<SecretKey> = remote_enr_str.to_string().parse().unwrap();
+                let remote_enr: Enr<CombinedKey> = remote_enr_str.to_string().parse().unwrap();
 
                 // construct a local ENR
                 // A fixed key for testing
                 let raw_key = hex!("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291");
                 let secret_key = secp256k1::SecretKey::parse_slice(&raw_key).unwrap();
-                let mut enr_key = enr::CombinedKey::from(secret_key);
+                let mut enr_key = Arc::new(enr::CombinedKey::from(secret_key));
 
                 let local_addr: SocketAddr = socket.local_addr().unwrap();
+                println!("local addr:{:?}", local_addr);
                 let enr = {
                     let mut builder = enr::EnrBuilder::new("v4");
                     // if an IP was specified, use it
                     builder.ip(local_addr.ip() );
                     // if a port was specified, use it
                     builder.udp(local_addr.port());
-                    builder.build(&enr_key).unwrap()
+                    builder.build(&enr_key.borrow()).unwrap()
                 };
                 //let addr = "176.9.51.216:25578";
-                let addr = "127.0.0.1:9000";
+                //let addr = "127.0.0.1:9000";
                 let id = 1;
                 let distance = 256;
                 let message = Message::Request(Request {
@@ -145,8 +155,19 @@ mod tests {
                     body: RequestBody::FindNode { distance },
                 });
 
+                let magic = {
+                    let mut hasher = Sha256::new();
+                    hasher.input(enr.node_id().raw());
+                    hasher.input(b"WHOAREYOU");
+                    let mut magic: Magic = Default::default();
+                    magic.copy_from_slice(&hasher.result());
+                    magic
+                };
 
-                let tag = tag(&enr.node_id(), &remote_enr.node_id());
+                let local_id = enr.node_id();
+                let mut remote_id = remote_enr.node_id();
+
+                let tag = tag(&local_id, &remote_id);
 
 //                let packet = {
 //                    if let Some(session) = self.sessions.get(&node_address) {
@@ -163,14 +184,51 @@ mod tests {
 //                        Packet::random(tag)
 //                    }
 //                };
-                let packet = Packet::random(tag);
 
-                let send = socket.send_to(&packet.encode(), &addr).await;
+                let mut handler = Handler {enr: enr.clone(), key: enr_key, node_id: local_id, active_requests_auth: HashMap::new()};
+                let packet = Packet::random(tag);
+                println!("remote addr:{:?}", remote_enr.udp());
+                let send = socket.send_to(&packet.encode(), &remote_enr.udp_socket().unwrap().to_string()).await;
                 if let Ok(send) = send {
-                    println!("Sent {} bytes to {}", send, addr);
+                    println!("Sent {} bytes to {:?}", send, remote_enr.udp_socket());
                     let mut recv_buffer = [0u8; 1024];
                     let (n, peer) = socket.recv_from(&mut recv_buffer).await.unwrap();
-                    println!("Received {} bytes from {}", n, peer);
+                    let resp = Packet::decode(&recv_buffer[..n], &magic).unwrap();
+                    let auth_tag = packet.auth_tag().expect("No challenges here");
+
+                    let remote_addr = NodeAddress {
+                        node_id: remote_id,
+                        socket_addr: remote_enr.udp_socket().unwrap(),
+                    };
+                    handler.active_requests_auth.insert(*auth_tag, remote_addr);
+                    println!("Received {} bytes from {}, resp: {:?}", n, peer, resp);
+
+
+                    // Generate a new session and authentication packet
+                    // TODO: Remove tags in the update
+                    match resp {
+                        Packet::WhoAreYou {magic, auth_tag ,id_nonce,enr_seq } => {
+                            let (auth_packet, mut session) = match Session::encrypt_with_header(
+                                tag,
+                                &remote_id,
+                                remote_enr.public_key(),
+                                enr_key,
+                                Some(remote_enr),
+                                &local_id,
+                                &id_nonce,
+                                &[0,1,2]
+                            ) {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    error!("Could not generate a session. Error: {:?}", e);
+
+                                    return;
+                                }
+                            };
+                        },
+                        _ => (),
+                    }
+
                 } else {
                     println!("udp send err:{:?}", send);
                 }
