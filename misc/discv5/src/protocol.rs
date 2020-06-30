@@ -39,6 +39,8 @@ use async_std::net::UdpSocket;
 use sha2::{Digest, Sha256};
 use enr::NodeId;
 use crate::packet::{Tag, TAG_LENGTH};
+use enr::Enr;
+use crate::node_info::NodeAddress;
 
 pub async fn tcp_multistream() {
     let mut  connec = async_std::net::TcpStream::connect("176.9.51.216:23500").await.unwrap();
@@ -91,13 +93,23 @@ pub async fn tcp_multistream() {
 }
 
 
-fn tag(src_id: &NodeId, dst_id: &NodeId) -> Tag {
+pub fn tag(src_id: &NodeId, dst_id: &NodeId) -> Tag {
     let hash = Sha256::digest(&dst_id.raw());
     let mut tag: Tag = Default::default();
     for i in 0..TAG_LENGTH {
         tag[i] = hash[i] ^ src_id.raw()[i];
     }
     tag
+}
+
+
+/// Verifies a Node ENR to it's observed address. If it fails, any associated session is also
+    /// considered failed. If it succeeds, we notify the application.
+pub fn verify_enr(enr: &Enr<enr::CombinedKey>, node_address: &NodeAddress) -> bool {
+    // If the ENR does not match the observed IP addresses, we consider the Session
+    // failed.
+    enr.node_id() == node_address.node_id
+        && (enr.udp_socket().is_none() || enr.udp_socket() == Some(node_address.socket_addr))
 }
 
 #[cfg(test)]
@@ -108,14 +120,14 @@ mod tests {
     use enr::{Enr, secp256k1::SecretKey, CombinedKey};
     use crate::packet::{Magic, Packet};
     use hex;
-    use super::tag;
+    use super::{tag, verify_enr};
     use hex_literal::*;
     use sha2::{Digest, Sha256};
     use crate::handler::Handler;
     use std::{collections::HashMap, default::Default, net::SocketAddr, sync::atomic::Ordering};
     use crate::node_info::NodeAddress;
     use crate::session::Session;
-    use log::error;
+    use log::{error, debug};
     use std::sync::Arc;
     use core::borrow::Borrow;
 
@@ -123,9 +135,9 @@ mod tests {
     fn discv5_client_test() {
         init_log("trace");
         async_std::task::block_on(async move {
-            let res = UdpSocket::bind("0.0.0.0:0").await;
+            let res = UdpSocket::bind("127.0.0.1:0").await;
             if let Ok(socket) = res {
-                let remote_enr_str = "enr:-IS4QDOKuguplQtow8zjKEDXvzqT4K5XUjzZtmvluM8POGOVXP-euJjRnEEh8LMFXONBlJwfui5g_ehd5npZ0ZuDQksBgmlkgnY0gmlwhAAAAACJc2VjcDI1NmsxoQKtB3pwsjc32gv9KR9HY_3QI5Fjf6_aM-bjqUyrUHKZH4N1ZHCCIyg";
+                let remote_enr_str ="enr:-IS4QBtA8t5-oFTRS8iQp_1vqk083SI5Wwl4DxwudM1LqNpJJ5M8I-x6GiI_YE-kcg7XHHnvVRn3VPHwvHI2i19BhZIBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQIk3AxDe91CWHImKT47HQtKfEnACfEvDh995VFNyDYUUYN1ZHCCIyg";
                // let remote_enr_str = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
                 //let remote_enr: Enr<SecretKey> = remote_enr_str.to_string().parse().unwrap();
                 let remote_enr: Enr<CombinedKey> = remote_enr_str.to_string().parse().unwrap();
@@ -167,7 +179,10 @@ mod tests {
 
                 let local_id = enr.node_id();
                 let mut remote_id = remote_enr.node_id();
-
+//                let local_nodeaddress = NodeAddress {
+//                    node_id,
+//                    socket_addr,
+//                };
                 let tag = tag(&local_id, &remote_id);
 
 //                let packet = {
@@ -188,7 +203,7 @@ mod tests {
 
                 let mut handler = Handler {enr: enr.clone(), key: enr_key_1, node_id: local_id, active_requests_auth: HashMap::new()};
                 let packet = Packet::random(tag);
-                println!("remote addr:{:?}", remote_enr.udp());
+                println!("remote addr:{:?}:{:?}", remote_enr.ip(), remote_enr.udp());
                 let send = socket.send_to(&packet.encode(), &remote_enr.udp_socket().unwrap().to_string()).await;
                 if let Ok(send) = send {
                     println!("Sent {} bytes to {:?}", send, remote_enr.udp_socket());
@@ -198,11 +213,11 @@ mod tests {
                     let resp = Packet::decode(&recv_buffer[..n], &magic).unwrap();
                     let auth_tag = packet.auth_tag().expect("No challenges here");
 
-                    let remote_addr = NodeAddress {
+                    let remote_nodeaddress = NodeAddress {
                         node_id: remote_id,
                         socket_addr: remote_enr.udp_socket().unwrap(),
                     };
-                    handler.active_requests_auth.insert(*auth_tag, remote_addr);
+                    handler.active_requests_auth.insert(*auth_tag, remote_nodeaddress);
                     println!("resp: {:?}", resp);
 
 
@@ -215,7 +230,7 @@ mod tests {
                                 &remote_id,
                                 remote_enr.public_key(),
                                 &enr_key,
-                                Some(remote_enr),
+                                Some(enr),
                                 &local_id,
                                 &id_nonce,
                                 &[0,1,2]
@@ -227,6 +242,41 @@ mod tests {
                                     return;
                                 }
                             };
+
+                            let node_address =  handler.active_requests_auth.remove(&auth_tag).unwrap();
+                                // Verify the ENR and establish or fail a session.
+                            if verify_enr(&remote_enr, &node_address) {
+                                // Send the Auth response
+//                                trace!(
+//                                    "Sending Authentication response to node: {}",
+//                                    request_call
+//                                        .contact
+//                                        .node_address()
+//                                        .expect("Sanitized contact")
+//                                );
+                                //request_call.packet = auth_packet.clone();
+                               // request_call.handshake_sent = true;
+                                // Reinsert the request_call
+                                //self.insert_active_request(request_call);
+                                socket.send_to(&auth_packet.encode(), node_address.socket_addr).await;
+
+                                // Notify the application the session has been established
+//                                self.outbound_channel
+//                                    .send(HandlerResponse::Established(*enr))
+//                                    .await
+//                                    .unwrap_or_else(|_| ());
+                            } else {
+                                // IP's or NodeAddress don't match. Drop the session.
+                                // TODO: Blacklist the peer
+                                debug!(
+                                    "Session has invalid ENR. Enr socket: {:?}, {}",
+                                    remote_enr.udp_socket(),
+                                    node_address
+                                );
+
+                                return;
+                            }
+
                         },
                         _ => (),
                     }
