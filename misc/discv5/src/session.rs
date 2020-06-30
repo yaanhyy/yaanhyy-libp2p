@@ -7,7 +7,7 @@ use crate::packet::{Packet, AuthTag, Tag, Nonce, AuthHeader};
 use std::sync::Arc;
 
 #[derive(Zeroize, PartialEq)]
-pub(crate) struct Keys {
+pub struct Keys {
     /// The Authentication response key.
     auth_resp_key: [u8; 16],
 
@@ -20,7 +20,7 @@ pub(crate) struct Keys {
 
 /// A Session containing the encryption/decryption keys. These are kept individually for a given
 /// node.
-pub(crate) struct Session {
+pub struct Session {
     /// The current keys used to encrypt/decrypt messages.
     keys: Keys,
     /// If a new handshake is being established, these keys can be tried to determine if this new
@@ -52,7 +52,7 @@ impl Session {
 
     /// Uses the current `Session` to encrypt a message. Encrypt packets with the current session
     /// key if we are awaiting a response from AuthMessage.
-    pub(crate) fn encrypt_message(&self, tag: Tag, message: &[u8]) -> Result<Packet, String> {
+    pub fn encrypt_message(&self, tag: Tag, message: &[u8]) -> Result<Packet, String> {
         //TODO: Establish a counter to prevent repeats of nonce
         let auth_tag: AuthTag = rand::random();
 
@@ -67,7 +67,7 @@ impl Session {
     /// Decrypts an encrypted message. If a Session is already established, the original decryption
     /// keys are tried first, upon failure, the new keys are attempted. If the new keys succeed,
     /// the session keys are updated along with the Session state.
-    pub(crate) fn decrypt_message(
+    pub fn decrypt_message(
         &mut self,
         nonce: AuthTag,
         message: &[u8],
@@ -152,7 +152,7 @@ impl Session {
 //    }
 
       // Encrypts a message and produces an AuthMessage.
-    pub(crate) fn encrypt_with_header(
+    pub fn encrypt_with_header(
         tag: Tag,
         remote_id: &NodeId,
         remote_key: CombinedPublicKey,

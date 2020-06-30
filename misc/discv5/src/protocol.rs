@@ -135,10 +135,11 @@ mod tests {
     fn discv5_client_test() {
         init_log("trace");
         async_std::task::block_on(async move {
-            let res = UdpSocket::bind("127.0.0.1:0").await;
+            let res = UdpSocket::bind("0.0.0.0:50139").await;
             if let Ok(socket) = res {
-                let remote_enr_str ="enr:-IS4QBtA8t5-oFTRS8iQp_1vqk083SI5Wwl4DxwudM1LqNpJJ5M8I-x6GiI_YE-kcg7XHHnvVRn3VPHwvHI2i19BhZIBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQIk3AxDe91CWHImKT47HQtKfEnACfEvDh995VFNyDYUUYN1ZHCCIyg";
-               // let remote_enr_str = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
+                //let remote_enr_str = "enr:-IS4QBtA8t5-oFTRS8iQp_1vqk083SI5Wwl4DxwudM1LqNpJJ5M8I-x6GiI_YE-kcg7XHHnvVRn3VPHwvHI2i19BhZIBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQIk3AxDe91CWHImKT47HQtKfEnACfEvDh995VFNyDYUUYN1ZHCCIyg";
+               // let remote_enr_str ="enr:-LK4QFtV7Pz4reD5a7cpfi1z6yPrZ2I9eMMU5mGQpFXLnLoKZW8TXvVubShzLLpsEj6aayvVO1vFx-MApijD3HLPhlECh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD6etXjAAABIf__________gmlkgnY0gmlwhDMPYfCJc2VjcDI1NmsxoQIerw_qBc9apYfZqo2awiwS930_vvmGnW2psuHsTzrJ8YN0Y3CCIyiDdWRwgiMo";//altona
+                let remote_enr_str = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
                 //let remote_enr: Enr<SecretKey> = remote_enr_str.to_string().parse().unwrap();
                 let remote_enr: Enr<CombinedKey> = remote_enr_str.to_string().parse().unwrap();
 
@@ -201,7 +202,7 @@ mod tests {
 //                    }
 //                };
 
-                let mut handler = Handler {enr: enr.clone(), key: enr_key_1, node_id: local_id, active_requests_auth: HashMap::new()};
+                let mut handler = Handler {enr: enr.clone(), key: enr_key_1, node_id: local_id, active_requests_auth: HashMap::new(), sessions: HashMap::new()};
                 let packet = Packet::random(tag);
                 println!("remote addr:{:?}:{:?}", remote_enr.ip(), remote_enr.udp());
                 let send = socket.send_to(&packet.encode(), &remote_enr.udp_socket().unwrap().to_string()).await;
@@ -233,7 +234,7 @@ mod tests {
                                 Some(enr),
                                 &local_id,
                                 &id_nonce,
-                                &[0,1,2]
+                                &message.encode()
                             ) {
                                 Ok(v) => v,
                                 Err(e) => {
@@ -259,7 +260,31 @@ mod tests {
                                 // Reinsert the request_call
                                 //self.insert_active_request(request_call);
                                 socket.send_to(&auth_packet.encode(), node_address.socket_addr).await;
+                                handler.new_session(node_address, session);
 
+                                //send find node
+                                let mut recv_buffer = [0u8; 1024];
+                                loop {
+                                    let (n, peer) = socket.recv_from(&mut recv_buffer).await.unwrap();
+                                    println!("Received {} bytes from {}", n, peer);
+                                    let resp = Packet::decode(&recv_buffer[..n], &magic).unwrap();
+                                    println!("resp: {:?}", resp);
+                                    match resp {
+                                        Packet::Message { tag, auth_tag, message } => {
+                                            let src_id = handler.src_id(&tag);
+                                            let node_addr = NodeAddress {
+                                                socket_addr: peer,
+                                                node_id: src_id,
+                                            };
+                                            if let Some(session) = handler.sessions.get_mut(&node_addr) {
+                                                let message = session.decrypt_message(auth_tag, &message, &tag).unwrap();
+                                                let msg = Message::decode(message).unwrap();
+                                                println!("find node msg:{:?}", msg);
+                                            }
+                                        },
+                                        _ => (),
+                                    }
+                                }
                                 // Notify the application the session has been established
 //                                self.outbound_channel
 //                                    .send(HandlerResponse::Established(*enr))
