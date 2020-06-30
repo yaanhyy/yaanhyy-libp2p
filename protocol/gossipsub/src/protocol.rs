@@ -177,6 +177,8 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
 //                println!("rpc send vec:{:?}", rpc_buf);
 //                let frame = Frame::data(stream_spawn.id(), rpc_buf).unwrap();
 //                stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+
+                //receive info from remote node, need subscribe  amd graft to remote node!
                 loop {
                     buf = data_receiver.next().await;
                     println!("receive gossip msg body len :{:?}", buf);
@@ -271,6 +273,7 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
                 let frame = Frame::data(stream_spawn.id(), rpc_buf).unwrap();
                 stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
 
+                //publish info to topic test-net, other node subscribe this topic can receive the info
                 let out = publish(local_peer_id_clone, "test-net".to_string(), "hello".as_bytes().to_vec());
                 rpc_buf = Vec::with_capacity(out.encoded_len());
                 out.encode(&mut rpc_buf).expect("Buffer has sufficient capacity");
@@ -317,7 +320,7 @@ pub async fn period_send( sender: mpsc::Sender<ControlCommand>, local_peer_id: P
 fn chart_client_test() {
     init_log("debug");
     async_std::task::block_on(async move {
-        let mut  connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
+        let mut  connec = async_std::net::TcpStream::connect("95.146.89.52:13000").await.unwrap();
         let match_proto = dialer_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string(), "/yamux/1.0.0\n".to_string()], true).await;
         if match_proto.is_ok() {
             let proto = match_proto.unwrap();

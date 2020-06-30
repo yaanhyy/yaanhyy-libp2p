@@ -96,7 +96,7 @@ pub async fn dialer_select_proto_yamux() {
 fn ping_client_test() {
     init_log("debug");
     async_std::task::block_on(async move {
-        let connec = async_std::net::TcpStream::connect("206.189.238.60:13000").await.unwrap();
+        let connec = async_std::net::TcpStream::connect("95.146.89.52:13000").await.unwrap();
         let match_proto = dialer_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string()], true).await;
         if match_proto.is_ok() {
             let local_key = Keypair::generate_ed25519();
