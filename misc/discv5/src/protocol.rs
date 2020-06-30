@@ -116,7 +116,7 @@ pub fn verify_enr(enr: &Enr<enr::CombinedKey>, node_address: &NodeAddress) -> bo
 mod tests {
     use utils::{init_log, write_varint, insert_frame_len};
     use async_std::net::UdpSocket;
-    use crate::rpc::{Message, Request, RequestBody};
+    use crate::rpc::{Message, Request, RequestBody, ResponseBody, Response};
     use enr::{Enr, secp256k1::SecretKey, CombinedKey};
     use crate::packet::{Magic, Packet};
     use hex;
@@ -135,11 +135,12 @@ mod tests {
     fn discv5_client_test() {
         init_log("trace");
         async_std::task::block_on(async move {
-            let res = UdpSocket::bind("0.0.0.0:50139").await;
+            let res = UdpSocket::bind("127.0.0.1:50139").await;
             if let Ok(socket) = res {
-                //let remote_enr_str = "enr:-IS4QBtA8t5-oFTRS8iQp_1vqk083SI5Wwl4DxwudM1LqNpJJ5M8I-x6GiI_YE-kcg7XHHnvVRn3VPHwvHI2i19BhZIBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQIk3AxDe91CWHImKT47HQtKfEnACfEvDh995VFNyDYUUYN1ZHCCIyg";
+                 let remote_enr_str = "enr:-IS4QBtA8t5-oFTRS8iQp_1vqk083SI5Wwl4DxwudM1LqNpJJ5M8I-x6GiI_YE-kcg7XHHnvVRn3VPHwvHI2i19BhZIBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQIk3AxDe91CWHImKT47HQtKfEnACfEvDh995VFNyDYUUYN1ZHCCIyg";
                // let remote_enr_str ="enr:-LK4QFtV7Pz4reD5a7cpfi1z6yPrZ2I9eMMU5mGQpFXLnLoKZW8TXvVubShzLLpsEj6aayvVO1vFx-MApijD3HLPhlECh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD6etXjAAABIf__________gmlkgnY0gmlwhDMPYfCJc2VjcDI1NmsxoQIerw_qBc9apYfZqo2awiwS930_vvmGnW2psuHsTzrJ8YN0Y3CCIyiDdWRwgiMo";//altona
-                let remote_enr_str = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
+                //let remote_enr_str = "enr:-LK4QPVkFd_MKzdW0219doTZryq40tTe8rwWYO75KDmeZM78fBskGsfCuAww9t8y3u0Q0FlhXOhjE1CWpx3SGbUaU80Ch2F0dG5ldHOIAAAAAAAAAACEZXRoMpD6etXjAAABIf__________gmlkgnY0gmlwhDMPRgeJc2VjcDI1NmsxoQNHu-QfNgzl8VxbMiPgv6wgAljojnqAOrN18tzJMuN8oYN0Y3CCIyiDdWRwgiMo";
+                // let remote_enr_str = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
                 //let remote_enr: Enr<SecretKey> = remote_enr_str.to_string().parse().unwrap();
                 let remote_enr: Enr<CombinedKey> = remote_enr_str.to_string().parse().unwrap();
 
@@ -160,6 +161,8 @@ mod tests {
                     builder.udp(local_addr.port());
                     builder.build(&enr_key).unwrap()
                 };
+
+                let local_enr_seq = enr.seq();
                 //let addr = "176.9.51.216:25578";
                 //let addr = "127.0.0.1:9000";
                 let id = 1;
@@ -270,7 +273,7 @@ mod tests {
                                     let resp = Packet::decode(&recv_buffer[..n], &magic).unwrap();
                                     println!("resp: {:?}", resp);
                                     match resp {
-                                        Packet::Message { tag, auth_tag, message } => {
+                                        Packet::Message {tag,  auth_tag, message } => {
                                             let src_id = handler.src_id(&tag);
                                             let node_addr = NodeAddress {
                                                 socket_addr: peer,
@@ -280,16 +283,40 @@ mod tests {
                                                 let message = session.decrypt_message(auth_tag, &message, &tag).unwrap();
                                                 let msg = Message::decode(message).unwrap();
                                                 println!("find node msg:{:?}", msg);
+                                                match msg {
+                                                    Message::Request(req) => {
+                                                        let resp_id = req.id;
+                                                        let src = node_addr.socket_addr;
+                                                        println!("remote addr:{:?}", src);
+                                                        match req.body {
+                                                            RequestBody::Ping {enr_seq} => {
+                                                                let tag = super::tag(&local_id, &remote_id);
+                                                                let response = Response {
+                                                                    id: resp_id,
+                                                                    body: ResponseBody::Ping { enr_seq: local_enr_seq, ip:src.ip(), port: src.port()},
+                                                                };
+                                                                println!("ping tag:{:?}", tag);
+                                                                let pong_pack = match session.encrypt_message(tag, &response.encode()) {
+                                                                    Ok(packet) => packet,
+                                                                    Err(e) => {
+                                                                        println!("Could not encrypt response: {:?}", e);
+                                                                        return;
+                                                                    }
+                                                                };
+                                                                socket.send_to(&pong_pack.encode(), src).await;
+                                                            }
+                                                            _ => (),
+                                                        }
+                                                    },
+                                                    _ =>(),
+                                                }
                                             }
                                         },
                                         _ => (),
                                     }
                                 }
-                                // Notify the application the session has been established
-//                                self.outbound_channel
-//                                    .send(HandlerResponse::Established(*enr))
-//                                    .await
-//                                    .unwrap_or_else(|_| ());
+
+
                             } else {
                                 // IP's or NodeAddress don't match. Drop the session.
                                 // TODO: Blacklist the peer
