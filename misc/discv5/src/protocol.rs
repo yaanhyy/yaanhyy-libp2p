@@ -267,6 +267,7 @@ mod tests {
 
                                 //send find node
                                 let mut recv_buffer = [0u8; 1024];
+                                let mut req_id = 0;
                                 loop {
                                     let (n, peer) = socket.recv_from(&mut recv_buffer).await.unwrap();
                                     println!("Received {} bytes from {}", n, peer);
@@ -314,8 +315,30 @@ mod tests {
                                                                 for enr in nodes {
                                                                    // println!("remote_enr str:{:?}", enr_str );
                                                                    // let remote_enr: Enr<CombinedKey> = enr_str.to_string().parse().unwrap();
-                                                                    println!("remote_enr:{:?}", enr.tcp_socket() );
+                                                                    println!("tcp remote_enr:{:?}", enr.tcp_socket() );
+                                                                    println!("udp remote_enr:{:?}", enr.udp_socket() );
+
+                                                                    if let Some(udp_addr) = enr.udp_socket() {
+                                                                        let remote_id = enr.node_id();
+                                                                        let tag = super::tag(&local_id, &remote_id);
+                                                                        let request = Request {
+                                                                            id: req_id,
+                                                                            body: RequestBody::Ping { enr_seq: local_enr_seq},
+                                                                        };
+                                                                        req_id += 1;
+                                                                        let ping_pack = match session.encrypt_message(tag, &request.encode()) {
+                                                                            Ok(packet) => packet,
+                                                                            Err(e) => {
+                                                                                println!("Could not encrypt response: {:?}", e);
+                                                                                return;
+                                                                            }
+                                                                        };
+                                                                        socket.send_to(&ping_pack.encode(), udp_addr).await;
+                                                                    }
                                                                 }
+                                                            },
+                                                            ResponseBody::Ping {enr_seq, ip, port} => {
+                                                                println!("resp ping ip:{}, port:{}", ip, port);
                                                             },
                                                             _ => (),
                                                         }

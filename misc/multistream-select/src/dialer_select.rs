@@ -8,6 +8,7 @@ use secio::codec::{SecureHalfConnWrite, SecureHalfConnRead};
 use futures::{channel::{mpsc, oneshot}};
 use futures::{future, select, join};
 use crate::listener_select::remote_stream_deal;
+use secio::identity::Keypair;
 
 pub async fn dialer_select_proto<S>(mut connec: S, protocols: Vec<String>, init_flag: bool) -> Result<Vec<u8>, String>
 where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
@@ -95,10 +96,12 @@ pub async fn dialer_select_proto_yamux() {
 fn ping_client_test() {
     init_log("debug");
     async_std::task::block_on(async move {
-        let connec = async_std::net::TcpStream::connect("127.0.0.1:5679").await.unwrap();
+        let connec = async_std::net::TcpStream::connect("206.189.238.60:13000").await.unwrap();
         let match_proto = dialer_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string()], true).await;
         if match_proto.is_ok() {
-            let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), Mode::Client).await.unwrap();
+            let local_key = Keypair::generate_ed25519();
+            //let local_peer_id = PeerId::from(local_key.public());
+            let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), local_key, Mode::Client).await.unwrap();
             let arc_reader = session_reader.socket.clone();
             let arc_writer = session_writer.socket.clone();
             let res = dialer_select_proto_secio(arc_reader, arc_writer, vec!["/yamux/1.0.0\n".to_string()]).await;

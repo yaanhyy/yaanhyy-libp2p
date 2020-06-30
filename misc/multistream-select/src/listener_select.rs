@@ -214,7 +214,8 @@ fn ping_server_test() {
         match res {
             Ok(protos) => {
                 if protos.contains(&("/secio/1.0.0\n".to_string())) {
-                    let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), Mode::Server).await.unwrap();
+                    let local_key = Keypair::generate_ed25519();
+                    let (mut session_reader, mut session_writer) = upgrade_secio_protocol(connec.clone(), local_key, Mode::Server).await.unwrap();
                     let arc_reader = session_reader.socket.clone();
                     let arc_writer = session_writer.socket.clone();
                     listener_select_proto_secio(arc_reader, arc_writer, vec!["/yamux/1.0.0\n".to_string()]).await;

@@ -359,7 +359,7 @@ mod tests {
         async_std::task::block_on(async move {
             let client_id = identity::Keypair::generate_ed25519();
             let client_id_public = client_id.public();
-            let connec = async_std::net::TcpStream::connect("127.0.0.1:8981").await.unwrap();
+            let connec = async_std::net::TcpStream::connect("128.127.69.224:13000").await.unwrap();
             let client_dh = Keypair::new().into_authentic(&client_id).unwrap();
             let config = NoiseConfig::xx(client_dh);
             let session = config.params.into_builder()
