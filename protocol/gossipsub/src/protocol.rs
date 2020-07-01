@@ -157,29 +157,6 @@ pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, m
                     }
                 };
                 println!("rpc topic:{:?}", rpc_in);
-//                let sub = rpc_in.subscriptions[0].clone();
-//                let topic = sub.topic_id.unwrap();
-//                let rpc_graft = ControlGraft {
-//                    topic_id: Some(topic),
-//                };
-//                // control messages
-//                let mut control = ControlMessage {
-//                    ihave: Vec::new(),
-//                    iwant: Vec::new(),
-//                    graft: Vec::new(),
-//                    prune: Vec::new(),
-//                };
-//                control.graft.push(rpc_graft);
-//                rpc_in.control = Some(control);
-//                let mut rpc_buf: Vec<u8> = Vec::with_capacity(rpc_in.encoded_len());
-//                rpc_in.encode(&mut rpc_buf)
-//                    .expect("Buffer has sufficient capacity");
-//                let len:u8 = rpc_buf.len() as u8;
-//                println!("rpc send:{:?}", rpc_in);
-//                rpc_buf.insert(0, len);
-//                println!("rpc send vec:{:?}", rpc_buf);
-//                let frame = Frame::data(stream_spawn.id(), rpc_buf).unwrap();
-//                stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
 
                 //receive info from remote node, need subscribe  amd graft to remote node!
                 loop {
@@ -316,9 +293,9 @@ pub async fn remote_stream_deal_eth2(mut frame_sender: mpsc::Sender<StreamComman
                  let mut bytes = Vec::with_capacity(message.encoded_len());
                  message.encode(&mut bytes).expect("Vec<u8> provides capacity as needed");
                  let mut len: u8 = bytes.len() as u8;
-                 println!("rpc send:{:?}", message);
+                 println!("rpc id send:{:?}", message);
                  bytes.insert(0, len);
-                 println!("rpc send vec:{:?}", bytes);
+                 println!("rpc id send vec:{:?}", bytes);
                  let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
                  stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
              }
@@ -336,29 +313,7 @@ pub async fn remote_stream_deal_eth2(mut frame_sender: mpsc::Sender<StreamComman
                  }
              };
              println!("rpc topic:{:?}", rpc_in);
-//            let sub = rpc_in.subscriptions[0].clone();
-//            let topic = sub.topic_id.unwrap();
-//            let rpc_graft = ControlGraft {
-//                topic_id: Some(topic),
-//            };
-//            // control messages
-//            let mut control = ControlMessage {
-//                ihave: Vec::new(),
-//                iwant: Vec::new(),
-//                graft: Vec::new(),
-//                prune: Vec::new(),
-//            };
-//            control.graft.push(rpc_graft);
-//            rpc_in.control = Some(control);
-//            let mut rpc_buf: Vec<u8> = Vec::with_capacity(rpc_in.encoded_len());
-//            rpc_in.encode(&mut rpc_buf)
-//                .expect("Buffer has sufficient capacity");
-//            let len:u8 = rpc_buf.len() as u8;
-//            println!("rpc send:{:?}", rpc_in);
-//            rpc_buf.insert(0, len);
-//            println!("rpc send vec:{:?}", rpc_buf);
-//            let frame = Frame::data(stream_spawn.id(), rpc_buf).unwrap();
-//            stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+
 
              //receive info from remote node, need subscribe  amd graft to remote node!
              loop {
@@ -667,7 +622,7 @@ fn eth2_client_test() {
 fn chart_client_test() {
     init_log("debug");
     async_std::task::block_on(async move {
-        let mut  connec = async_std::net::TcpStream::connect("95.146.89.52:13000").await.unwrap();
+        let mut  connec = async_std::net::TcpStream::connect("116.203.82.128:13000").await.unwrap();
         let match_proto = dialer_select_proto(connec.clone(), vec!["/secio/1.0.0\n".to_string(), "/yamux/1.0.0\n".to_string()], true).await;
         if match_proto.is_ok() {
             let proto = match_proto.unwrap();
