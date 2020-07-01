@@ -135,11 +135,13 @@ mod tests {
     fn discv5_client_test() {
         init_log("trace");
         async_std::task::block_on(async move {
-            let res = UdpSocket::bind("0.0.0.0:50139").await;
+            let res = UdpSocket::bind("10.154.141.130:50139").await;
             if let Ok(socket) = res {
+                //let remote_enr_str = "enr:-KO4QMGR1F0I2wcC_Zrhjm0vR1bJXCGpERAECLlNUSW9daFIYN714qq2DC6peF8tHMY_9eTgPxaaTGWqjbYqI5MOOg8Bh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD9yjmwAAABIf__________gmlkgnY0iXNlY3AyNTZrMaED_rLndpE6_Casc42pkye8RaUxxdhqVUa-gM886LCm7RmDdGNwgiMo";
+
                  //let remote_enr_str = "enr:-IS4QBtA8t5-oFTRS8iQp_1vqk083SI5Wwl4DxwudM1LqNpJJ5M8I-x6GiI_YE-kcg7XHHnvVRn3VPHwvHI2i19BhZIBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQIk3AxDe91CWHImKT47HQtKfEnACfEvDh995VFNyDYUUYN1ZHCCIyg";
                 //let remote_enr_str ="enr:-LK4QFtV7Pz4reD5a7cpfi1z6yPrZ2I9eMMU5mGQpFXLnLoKZW8TXvVubShzLLpsEj6aayvVO1vFx-MApijD3HLPhlECh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD6etXjAAABIf__________gmlkgnY0gmlwhDMPYfCJc2VjcDI1NmsxoQIerw_qBc9apYfZqo2awiwS930_vvmGnW2psuHsTzrJ8YN0Y3CCIyiDdWRwgiMo";//altona
-                //let remote_enr_str = "enr:-LK4QPVkFd_MKzdW0219doTZryq40tTe8rwWYO75KDmeZM78fBskGsfCuAww9t8y3u0Q0FlhXOhjE1CWpx3SGbUaU80Ch2F0dG5ldHOIAAAAAAAAAACEZXRoMpD6etXjAAABIf__________gmlkgnY0gmlwhDMPRgeJc2VjcDI1NmsxoQNHu-QfNgzl8VxbMiPgv6wgAljojnqAOrN18tzJMuN8oYN0Y3CCIyiDdWRwgiMo";
+               // let remote_enr_str = "enr:-LK4QPVkFd_MKzdW0219doTZryq40tTe8rwWYO75KDmeZM78fBskGsfCuAww9t8y3u0Q0FlhXOhjE1CWpx3SGbUaU80Ch2F0dG5ldHOIAAAAAAAAAACEZXRoMpD6etXjAAABIf__________gmlkgnY0gmlwhDMPRgeJc2VjcDI1NmsxoQNHu-QfNgzl8VxbMiPgv6wgAljojnqAOrN18tzJMuN8oYN0Y3CCIyiDdWRwgiMo";
 
                  let remote_enr_str = "enr:-Ku4QJsxkOibTc9FXfBWYmcdMAGwH4bnOOFb4BlTHfMdx_f0WN-u4IUqZcQVP9iuEyoxipFs7-Qd_rH_0HfyOQitc7IBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhLAJM9iJc2VjcDI1NmsxoQL2RyM26TKZzqnUsyycHQB4jnyg6Wi79rwLXtaZXty06YN1ZHCCW8w";
                 //let remote_enr: Enr<SecretKey> = remote_enr_str.to_string().parse().unwrap();
