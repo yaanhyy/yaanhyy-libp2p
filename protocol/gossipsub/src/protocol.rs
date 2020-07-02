@@ -467,52 +467,52 @@ pub async fn period_send_eth2( sender: mpsc::Sender<ControlCommand>, local_peer_
             println!("client receive3:{:?}", buf);
             buf = data_receiver.next().await;
             println!("client receive4:{:?}", buf);
+            let fork_digest =  [0u8; 4];
+            let gossip_topic = GossipTopic::new(
+                GossipKind::BeaconBlock,
+                GossipEncoding::default(),
+                fork_digest,
+            );
+            //send subscribe and graft info. become full-message node.
+            let mut  rpc_in: Rpc =  Rpc {
+                subscriptions: vec![
+                    SubOpts{
+                        subscribe: Some(true),
+                        topic_id: Some("beacon_block".to_string())
+                    }
+                ],
+                publish: Vec::new(),
+                control: None,
+            };
+            println!("rpc topic:{:?}", rpc_in);
+            let rpc_graft = ControlGraft {
+                topic_id: Some("beacon_block".to_string()),
+            };
 
-//            let gossip_topic = GossipTopic::new(
-//                GossipKind::BeaconBlock,
-//                GossipEncoding::default(),
-//                fork_digest,
-//            );
-//            //send subscribe and graft info. become full-message node.
-//            let mut  rpc_in: Rpc =  Rpc {
-//                subscriptions: vec![
-//                    SubOpts{
-//                        subscribe: Some(true),
-//                        topic_id: Some("beacon_block".to_string())
-//                    }
-//                ],
-//                publish: Vec::new(),
-//                control: None,
-//            };
-//            println!("rpc topic:{:?}", rpc_in);
-//            let rpc_graft = ControlGraft {
-//                topic_id: Some("beacon_block".to_string()),
-//            };
-//
-//
-//            let rpc_prune = ControlPrune {
-//                topic_id: Some("test-net".to_string()),
-//            };
-//
-//            // control messages
-//            let mut control = ControlMessage {
-//                ihave: Vec::new(),
-//                iwant: Vec::new(),
-//                graft: Vec::new(),
-//                prune: Vec::new(),
-//            };
-//            control.graft.push(rpc_graft);
-//            //control.prune.push(rpc_prune);
-//            rpc_in.control = Some(control);
-//            let mut rpc_buf: Vec<u8> = Vec::with_capacity(rpc_in.encoded_len());
-//            rpc_in.encode(&mut rpc_buf)
-//                .expect("Buffer has sufficient capacity");
-//            let mut len:u8 = rpc_buf.len() as u8;
-//            println!("rpc send:{:?}", rpc_in);
-//            rpc_buf.insert(0, len);
-//            println!("rpc send vec:{:?}", rpc_buf);
-//            let frame = Frame::data(stream_spawn.id(), rpc_buf).unwrap();
-//            stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+
+            let rpc_prune = ControlPrune {
+                topic_id: Some("test-net".to_string()),
+            };
+
+            // control messages
+            let mut control = ControlMessage {
+                ihave: Vec::new(),
+                iwant: Vec::new(),
+                graft: Vec::new(),
+                prune: Vec::new(),
+            };
+            control.graft.push(rpc_graft);
+            //control.prune.push(rpc_prune);
+            rpc_in.control = Some(control);
+            let mut rpc_buf: Vec<u8> = Vec::with_capacity(rpc_in.encoded_len());
+            rpc_in.encode(&mut rpc_buf)
+                .expect("Buffer has sufficient capacity");
+            let mut len:u8 = rpc_buf.len() as u8;
+            println!("rpc send:{:?}", rpc_in);
+            rpc_buf.insert(0, len);
+            println!("rpc send vec:{:?}", rpc_buf);
+            let frame = Frame::data(stream_spawn.id(), rpc_buf).unwrap();
+            stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
 
             //publish info to topic test-net, other node subscribe this topic can receive the info
 //                let out = publish(local_peer_id_clone, "test-net".to_string(), "hello".as_bytes().to_vec());
@@ -561,7 +561,7 @@ pub async fn period_send_eth2( sender: mpsc::Sender<ControlCommand>, local_peer_
 fn eth2_client_test() {
     init_log("debug");
     async_std::task::block_on(async move {
-        let mut  connec = async_std::net::TcpStream::connect("95.146.89.52:13000").await.unwrap();
+        let mut  connec = async_std::net::TcpStream::connect("173.249.17.215:13000").await.unwrap();
         let mut  local_addr: std::net::SocketAddr = connec.local_addr().unwrap();
         println!("localaddr:{:?}", local_addr);
         let addr = format!("/ip4/{}/tcp/{}",local_addr.ip().to_string() ,local_addr.port());
