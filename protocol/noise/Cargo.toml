@@ -20,7 +20,7 @@ curve25519-dalek = "2.0.0"
 snow = { version = "0.6.1", features = ["ring-resolver"], default-features = false }
 zeroize = "1"
 sha2 = "0.8.0"
-rand = "0.7.2"
+rand = "0.7.3"
 static_assertions = "1"
 log = "0.4"
 lazy_static = "1.2"
