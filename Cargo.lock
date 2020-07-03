@@ -2523,7 +2523,7 @@ dependencies = [
  "utils",
  "yaanhyy-identity",
  "yaanhyy-multistream-select",
- "yaanhyy-secio",
+ "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425)",
  "yaanhyy-yamux",
  "zeroize",
 ]
@@ -2568,7 +2568,7 @@ dependencies = [
  "utils",
  "yaanhyy-identity",
  "yaanhyy-multistream-select",
- "yaanhyy-secio",
+ "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425)",
  "yaanhyy-yamux",
 ]
 
@@ -2584,7 +2584,7 @@ dependencies = [
  "prost-build",
  "utils",
  "yaanhyy-multistream-select",
- "yaanhyy-secio",
+ "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425)",
  "yaanhyy-yamux",
 ]
 
@@ -2610,7 +2610,7 @@ dependencies = [
  "utils",
  "yaanhyy-identity",
  "yaanhyy-multistream-select",
- "yaanhyy-secio",
+ "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425)",
  "yaanhyy-yamux",
 ]
 
@@ -2634,7 +2634,7 @@ dependencies = [
  "lazy_static",
  "net2",
  "parity-multiaddr",
- "yaanhyy-secio",
+ "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425)",
 ]
 
 [[package]]
@@ -2645,7 +2645,7 @@ dependencies = [
  "futures 0.3.5",
  "futures-util",
  "utils",
- "yaanhyy-secio",
+ "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425)",
  "yaanhyy-yamux",
 ]
 
@@ -2670,7 +2670,7 @@ dependencies = [
  "utils",
  "x25519-dalek",
  "yaanhyy-multistream-select",
- "yaanhyy-secio",
+ "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425)",
  "zeroize",
 ]
 
@@ -2710,6 +2710,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "yaanhyy-secio"
+version = "0.1.0"
+source = "git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425#1a2aeff0358c9e6e6cb79730a75233aa4209a425"
+dependencies = [
+ "aes-ctr",
+ "asn1_der",
+ "bs58",
+ "ctr",
+ "ed25519-dalek",
+ "fnv",
+ "futures 0.3.5",
+ "futures-util",
+ "grpcio",
+ "hmac",
+ "lazy_static",
+ "libsecp256k1",
+ "log",
+ "multihash",
+ "prost",
+ "prost-build",
+ "protobuf",
+ "protoc-grpcio",
+ "rand",
+ "ring",
+ "sha2",
+ "thiserror",
+ "twofish",
+ "zeroize",
+]
+
+[[package]]
 name = "yaanhyy-yamux"
 version = "0.1.0"
 source = "git+https://github.com/yaanhyy/yaanhyy-yamux.git?rev=83ef900e6948596ba923cab3b222306b0dc0cb13#83ef900e6948596ba923cab3b222306b0dc0cb13"
@@ -2719,7 +2750,7 @@ dependencies = [
  "log",
  "pin-utils",
  "rand",
- "yaanhyy-secio",
+ "yaanhyy-secio 0.1.0 (git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=16421be27a37337526110c7f739b1c91d8414988)",
 ]
 
 [[package]]
