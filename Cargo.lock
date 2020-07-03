@@ -1830,6 +1830,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "snow"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce0f91be479494dd92e69d9971bd23ed27037dd1c94fcf558f6c6e74e6afa654"
+dependencies = [
+ "rand_core",
+ "ring",
+ "rustc_version",
+ "subtle 2.2.3",
+]
+
+[[package]]
 name = "socket2"
 version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2651,6 +2663,7 @@ dependencies = [
  "quickcheck",
  "rand",
  "sha2",
+ "snow",
  "sodiumoxide",
  "static_assertions",
  "utils",
