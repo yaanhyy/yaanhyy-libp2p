@@ -12,5 +12,5 @@ futures = "0.3.5"
 net2 = "0.2"
 dns-parser = "0.8"
 lazy_static = "1.2"
-secio = { package="yaanhyy-secio", rev = '2547ba1fd9b9d392abe28f81a5285e4f5b2502ce', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
+secio = { package="yaanhyy-secio",  git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
 parity-multiaddr = "0.9.0"

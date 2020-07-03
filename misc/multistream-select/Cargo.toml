@@ -11,5 +11,5 @@ async-std = "1.0"
 futures = "0.3.5"
 futures-util = "0.3.5"
 utils = {path = "../../utils"}
-secio = { package="yaanhyy-secio", rev = '2547ba1fd9b9d392abe28f81a5285e4f5b2502ce', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
-yamux = { package="yaanhyy-yamux", rev = '8c0578e6dcf0797d276ccfc3aee2c0c9f95b4dc7', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
+secio = { package="yaanhyy-secio",  git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
+yamux = { package="yaanhyy-yamux", rev = 'dad5e6e2fdcec9b45a57d86e2f2cf0c0d9e4cf47', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}

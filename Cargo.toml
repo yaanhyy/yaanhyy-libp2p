@@ -14,8 +14,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-#secio = { package="yaanhyy-secio", rev = '28ed08d58f2cc303b55cca99e2e5df9a6d734c4e', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
-#yamux = { package="yaanhyy-yamux", rev = 'bf83b146ea7a73578ea516b1c593185900d933ae', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
 multistream-select = { package = "yaanhyy-multistream-select", path = "misc/multistream-select" }
 utils = { package = "utils", path = "utils" }
 mdns = { package = "yaanhyy-mdns", path = "protocol/mdns" }

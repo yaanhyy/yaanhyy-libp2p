@@ -286,9 +286,9 @@ checksum = "130aac562c0dd69c56b3b1cc8ffd2e17be31d0b6c25b61c96b76231aa23e39e1"
 
 [[package]]
 name = "cc"
-version = "1.0.41"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dae9c4b8fedcae85592ba623c4fd08cfdab3e3b72d6df780c6ead964a69bfff"
+checksum = "0fde55d2a2bfaa4c9668bbc63f531fbdeee3ffe188f4662511ce2c22b3eedebe"
 
 [[package]]
 name = "cexpr"
@@ -1617,13 +1617,13 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.16.12"
+version = "0.16.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ba5a8ec64ee89a76c98c549af81ff14813df09c3e6dc4766c3856da48597a0c"
+checksum = "952cd6b98c85bbc30efa1ba5783b8abf12fec8b3287ffa52605b9432313e34e4"
 dependencies = [
  "cc",
- "lazy_static",
  "libc",
+ "once_cell",
  "spin",
  "untrusted",
  "web-sys",
@@ -1827,19 +1827,6 @@ dependencies = [
  "slab",
  "socket2",
  "wepoll-binding",
-]
-
-[[package]]
-name = "snow"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afb767eee7d257ba202f0b9b08673bc13b22281632ef45267b19f13100accd2f"
-dependencies = [
- "arrayref",
- "rand_core",
- "ring",
- "rustc_version",
- "subtle 2.2.3",
 ]
 
 [[package]]
@@ -2664,7 +2651,6 @@ dependencies = [
  "quickcheck",
  "rand",
  "sha2",
- "snow",
  "sodiumoxide",
  "static_assertions",
  "utils",
@@ -2681,7 +2667,7 @@ version = "0.1.0"
 [[package]]
 name = "yaanhyy-secio"
 version = "0.1.0"
-source = "git+https://github.com/yaanhyy/yaanhyy-secio.git?rev=1a2aeff0358c9e6e6cb79730a75233aa4209a425#1a2aeff0358c9e6e6cb79730a75233aa4209a425"
+source = "git+https://github.com/yaanhyy/yaanhyy-secio.git#67944ce76b28b2bbb66c98560b1eec70abdfc858"
 dependencies = [
  "aes-ctr",
  "asn1_der",
@@ -2712,7 +2698,7 @@ dependencies = [
 [[package]]
 name = "yaanhyy-yamux"
 version = "0.1.0"
-source = "git+https://github.com/yaanhyy/yaanhyy-yamux.git?rev=2c160f3776bc0cae37b4f20e95364d1ccc9cadd2#2c160f3776bc0cae37b4f20e95364d1ccc9cadd2"
+source = "git+https://github.com/yaanhyy/yaanhyy-yamux.git?rev=dad5e6e2fdcec9b45a57d86e2f2cf0c0d9e4cf47#dad5e6e2fdcec9b45a57d86e2f2cf0c0d9e4cf47"
 dependencies = [
  "async-std",
  "futures 0.3.5",
