@@ -482,45 +482,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "discv5"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "base64 0.11.0",
- "bytes 0.5.4",
- "digest",
- "enr",
- "env_logger 0.6.2",
- "futures 0.3.5",
- "futures-util",
- "hex",
- "hex-literal",
- "hkdf",
- "libsecp256k1",
- "log",
- "multihash",
- "openssl",
- "parity-multiaddr",
- "prost",
- "quickcheck",
- "rand",
- "rand_core",
- "rand_xorshift",
- "rlp",
- "sha2",
- "simple_logger",
- "smallvec 1.4.0",
- "tokio",
- "unsigned-varint",
- "utils",
- "yaanhyy-identity",
- "yaanhyy-multistream-select",
- "yaanhyy-secio",
- "yaanhyy-yamux",
- "zeroize",
-]
-
-[[package]]
 name = "dns-parser"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2526,6 +2487,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "yaanhyy-discv5"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "base64 0.11.0",
+ "bytes 0.5.4",
+ "digest",
+ "enr",
+ "env_logger 0.6.2",
+ "futures 0.3.5",
+ "futures-util",
+ "hex",
+ "hex-literal",
+ "hkdf",
+ "libsecp256k1",
+ "log",
+ "multihash",
+ "openssl",
+ "parity-multiaddr",
+ "prost",
+ "quickcheck",
+ "rand",
+ "rand_core",
+ "rand_xorshift",
+ "rlp",
+ "sha2",
+ "simple_logger",
+ "smallvec 1.4.0",
+ "tokio",
+ "unsigned-varint",
+ "utils",
+ "yaanhyy-identity",
+ "yaanhyy-multistream-select",
+ "yaanhyy-secio",
+ "yaanhyy-yamux",
+ "zeroize",
 ]
 
 [[package]]
