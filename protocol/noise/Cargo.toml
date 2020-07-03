@@ -14,7 +14,7 @@ prost = "0.6.1"
 utils = {path = "../../utils"}
 multistream-select = {package="yaanhyy-multistream-select", path="../../misc/multistream-select"}
 parity-multiaddr = "0.9.0"
-secio = { package="yaanhyy-secio", rev = '1a2aeff0358c9e6e6cb79730a75233aa4209a425', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
+secio = { package="yaanhyy-secio", rev = '2547ba1fd9b9d392abe28f81a5285e4f5b2502ce', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
 x25519-dalek = "0.6.0"
 curve25519-dalek = "2.0.0"
 snow = { version = "0.6.1", features = ["ring-resolver"], default-features = false }

@@ -12,8 +12,8 @@ futures = "0.3.5"
 futures-util = "0.3.5"
 prost = "0.6.1"
 utils = {path = "../../utils"}
-secio = { package="yaanhyy-secio", rev = '1a2aeff0358c9e6e6cb79730a75233aa4209a425', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
-yamux = { package="yaanhyy-yamux", rev = '2c160f3776bc0cae37b4f20e95364d1ccc9cadd2', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
+secio = { package="yaanhyy-secio", rev = '2547ba1fd9b9d392abe28f81a5285e4f5b2502ce', git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
+yamux = { package="yaanhyy-yamux", rev = '8c0578e6dcf0797d276ccfc3aee2c0c9f95b4dc7', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
 multistream-select = {package="yaanhyy-multistream-select", path="../../misc/multistream-select"}
 parity-multiaddr = "0.9.0"
 
