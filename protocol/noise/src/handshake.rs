@@ -6,9 +6,10 @@ use secio::identity;
 use crate::protocol::{KeypairIdentity, PublicKey};
 use crate::io::{NoiseOutput, SnowState};
 use futures::prelude::*;
-use async_std::sync::Mutex;
 use std::{fmt, sync::{Arc}, task::{Context, Poll}, pin::Pin};
 use crate::x25519::X25519Spec;
+use async_std::sync::Mutex;
+
 /// Handshake state.
 //pub struct State {
 //
@@ -272,7 +273,7 @@ pub async fn rt15_initiator<T>(
     session: snow::HandshakeState,
     identity: KeypairIdentity,
     identity_x: IdentityExchange
-) -> Result<(RemoteIdentity, NoiseOutput<T>), String>
+) -> Result<(RemoteIdentity, Arc<Mutex<NoiseOutput<T>>>), String>
     where
         T: AsyncWrite + AsyncRead + Unpin + Send + 'static,
 
@@ -281,7 +282,17 @@ pub async fn rt15_initiator<T>(
         send_empty(&mut noise_io).await;
         recv_identity(&mut noise_io).await;
         send_identity(&mut noise_io).await;
-        finish(noise_io)
+        let res = finish(noise_io);
+
+        match res {
+           Ok(connc) => {
+               Ok((connc.0,  Arc::new(Mutex::new(connc.1))))
+           }
+           Err(e) => {
+               Err(e)
+           }
+        }
+
 }
 
 /// Creates an authenticated Noise handshake for the responder of a
@@ -359,7 +370,7 @@ mod tests {
         async_std::task::block_on(async move {
             let client_id = identity::Keypair::generate_ed25519();
             let client_id_public = client_id.public();
-            let connec = async_std::net::TcpStream::connect("128.127.69.224:13000").await.unwrap();
+            let connec = async_std::net::TcpStream::connect("127.0.0.1:8981").await.unwrap();
             let client_dh = Keypair::new().into_authentic(&client_id).unwrap();
             let config = NoiseConfig::xx(client_dh);
             let session = config.params.into_builder()
@@ -370,8 +381,9 @@ mod tests {
                 let res = rt15_initiator(connec.clone(), state, config.dh_keys.into_identity(),IdentityExchange::Mutual).await;
                 if let Ok((remote, mut noise_io)) = res {
                     println!("send msg");
-                    noise_io.send(&mut "ok baby".as_bytes().to_vec()).await;
-                    let mut n = noise_io.read().await;
+                    let noise_clone = noise_io.clone();
+                    (*noise_io.lock().await).send(&mut "ok baby".as_bytes().to_vec()).await;
+                    let mut n = (*noise_io.lock().await).read().await;
                     println!("data:{:?}", n.unwrap());
                 }
             }

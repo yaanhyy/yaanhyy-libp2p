@@ -88,6 +88,49 @@ pub async fn dialer_select_proto_secio<R, W>(mut reader: Arc<Mutex<SecureHalfCon
     Err("not match proto".to_string())
 }
 
+
+//pub async fn dialer_select_proto_noise<T>(mut io: NoiseOutput<T>, protocols: Vec<String>) -> Result<String, String>
+//    where T: AsyncWrite + AsyncRead + Send + Unpin + 'static
+//{
+//    let mut len_buf = [0u8; 1];
+//    len_buf[0] = MSG_MULTISTREAM_1_0.len() as u8;
+//    let res = (*writer.lock().await).send(&mut len_buf.to_vec()).await;
+//    let res = (*writer.lock().await).send(&mut MSG_MULTISTREAM_1_0.to_vec()).await;
+//
+//
+//    let mut data =  (*reader.lock().await).read().await.unwrap();
+//    println!("data:{:?}",data);
+//    let (mut data, varint_buf) = split_length_from_package(data);
+//    let mut len = get_varint_len(varint_buf);
+//    let mut rest: Vec<_> = data.drain((len as usize)..).collect();
+//    let proto = std::str::from_utf8(&data).unwrap().to_string();
+//    println!("proto:{:?}", proto);
+//    if  !data.eq(&MSG_MULTISTREAM_1_0.to_vec()) {
+//        return Err("remote not agree for MULTISTREAM protocol".to_string());
+//    }
+//
+//
+//    //send protocol for negotiate
+//    for mut proto in protocols {
+//        len_buf[0] = proto.len() as u8;
+//        let res = (*writer.lock().await).send(&mut len_buf.to_vec()).await;
+//        let res = (*writer.lock().await).send(&mut proto.as_bytes().to_vec()).await;
+//
+//        let mut data = (*reader.lock().await).read().await.unwrap();
+//        let (mut data, varint_buf) = split_length_from_package(data);
+//        let mut len = get_varint_len(varint_buf);
+//        let mut rest: Vec<_> = data.drain((len as usize)..).collect();
+//        let return_proto = std::str::from_utf8(&data).unwrap().to_string();
+//        println!("secio rec proto:{:?}", proto);
+//        if return_proto.eq(&proto) {
+//            return Ok(proto)
+//        }
+//    }
+//
+//    Err("not match proto".to_string())
+//}
+
+
 pub async fn dialer_select_proto_yamux() {
 
 }

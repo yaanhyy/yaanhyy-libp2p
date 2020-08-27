@@ -79,7 +79,7 @@ pub fn publish(local_peer_id: PeerId, topic: String, data: Vec<u8>) -> Rpc{
         from: Some(local_peer_id.clone().into_bytes()),
         data: Some(data),
         seqno: Some(seqence.to_be_bytes().to_vec()),
-        topic_ids: vec!["test-net".to_string()]
+        topic_ids: vec![topic]
     };
     rpc_in.publish.push(msg);
     rpc_in
@@ -246,6 +246,10 @@ pub async fn remote_stream_deal_eth2(mut frame_sender: mpsc::Sender<StreamComman
                  proto = data.drain(20..).collect();
                  let mut stream_clone = stream_spawn.clone();
 
+                 let out = std::str::from_utf8(&data.clone()).unwrap().to_string();
+                 let out1 = std::str::from_utf8(&proto.clone()).unwrap().to_string();
+                 println!("proto negotiate len:{}, buf:{:?},ping:{:?}", len, out, out1);
+
                  //send back multistream_select protocol
                  let frame = Frame::data(stream_clone.id(), data).unwrap();
                  stream_clone.sender.send(StreamCommand::SendFrame(frame)).await;
@@ -298,6 +302,12 @@ pub async fn remote_stream_deal_eth2(mut frame_sender: mpsc::Sender<StreamComman
                  println!("rpc id send vec:{:?}", bytes);
                  let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
                  stream_spawn.sender.send(StreamCommand::SendFrame(frame)).await;
+             } else if proto.eq(&"/eth2/beacon_chain/req/metadata/1/ssz_snappy\n".as_bytes().to_vec()) {
+                 let mut len: u8 = bytes.len() as u8;
+                 println!("rpc id send:{:?}", message);
+                 bytes.insert(0, len);
+                 println!("rpc id send vec:{:?}", bytes);
+                 let frame = Frame::data(stream_spawn.id(), bytes).unwrap();
              }
 
              println!("begin gossip protocol");
@@ -471,14 +481,14 @@ pub async fn period_send_eth2( sender: mpsc::Sender<ControlCommand>, local_peer_
             let gossip_topic = GossipTopic::new(
                 GossipKind::BeaconBlock,
                 GossipEncoding::default(),
-                fork_digest,
+                [253, 202, 57, 176],
             );
             //send subscribe and graft info. become full-message node.
             let mut  rpc_in: Rpc =  Rpc {
                 subscriptions: vec![
                     SubOpts{
                         subscribe: Some(true),
-                        topic_id: Some("beacon_block".to_string())
+                        topic_id: Some(gossip_topic.clone().into() )
                     }
                 ],
                 publish: Vec::new(),
@@ -486,7 +496,7 @@ pub async fn period_send_eth2( sender: mpsc::Sender<ControlCommand>, local_peer_
             };
             println!("rpc topic:{:?}", rpc_in);
             let rpc_graft = ControlGraft {
-                topic_id: Some("beacon_block".to_string()),
+                topic_id: Some(gossip_topic.into()),
             };
 
 
@@ -561,7 +571,8 @@ pub async fn period_send_eth2( sender: mpsc::Sender<ControlCommand>, local_peer_
 fn eth2_client_test() {
     init_log("debug");
     async_std::task::block_on(async move {
-        let mut  connec = async_std::net::TcpStream::connect("173.249.17.215:13000").await.unwrap();
+        let mut  connec = async_std::net::TcpStream::connect("172.18.11.38:9000").await.unwrap();
+       // let mut  connec = async_std::net::TcpStream::connect("173.249.17.215:13000").await.unwrap();
         let mut  local_addr: std::net::SocketAddr = connec.local_addr().unwrap();
         println!("localaddr:{:?}", local_addr);
         let addr = format!("/ip4/{}/tcp/{}",local_addr.ip().to_string() ,local_addr.port());
