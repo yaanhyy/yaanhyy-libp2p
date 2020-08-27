@@ -18,7 +18,7 @@ use utils::init_log;
 use std::sync::{Arc};
 use async_std::sync::Mutex;
 pub use futures_util::io::{ReadHalf, WriteHalf};
-
+use noise::io::NoiseOutput;
 
 pub async fn period_send( sender: mpsc::Sender<ControlCommand>) {
     let res = open_stream(sender).await;
@@ -129,6 +129,48 @@ pub async fn listener_select_proto<S>(mut connec: S, protocols: Vec<String>) -> 
     Err("not match".to_string())
 }
 
+
+pub async fn listener_select_proto_noise<T>(mut io: Arc<Mutex<NoiseOutput<T>>>, protocols: Vec<String>) -> Result<String, String>
+    where T: AsyncWrite + AsyncRead + Send + Unpin + 'static
+{
+    let mut data = (*io.lock().await).read().await.unwrap();
+    let (mut data, varint_buf) = split_length_from_package(data);
+    let mut len = get_varint_len(varint_buf);
+    let mut rest: Vec<_> = data.drain((len as usize)..).collect();
+    let proto = std::str::from_utf8(&data).unwrap().to_string();
+    println!("secio rec proto:{:?}", proto);
+
+    if !data.eq(&MSG_MULTISTREAM_1_0.to_vec()) {
+        return Err("listener_select_proto_secio MULTISTREAM not match".to_string());
+    }
+
+    let mut len_buf = [0u8; 1];
+    //len_buf[0] = protocol::MSG_MULTISTREAM_1_0.len() as u8;
+    // let res = (*writer.lock().await).send(& mut len_buf.to_vec()).await;
+    // let res = (*writer.lock().await).send(& mut data).await;
+    loop {
+        if rest.is_empty() {
+            data = (*io.lock().await).read().await.unwrap();
+        } else {
+            data = rest;
+        }
+        let (mut data, varint_buf) = split_length_from_package(data);
+        len = get_varint_len(varint_buf);
+        rest = data.drain((len as usize)..).collect();
+        let proto = std::str::from_utf8(&data.clone()).unwrap().to_string();
+        println!("noise rec proto:{:?}", proto);
+        if protocols.contains(&proto) {
+            len_buf[0] = data.len() as u8;
+            println!("yamux len:{:?}", len_buf);
+            let res = (*io.lock().await).send(&mut len_buf.to_vec()).await;
+            println!("send yamux:{:?}", data);
+            let res = (*io.lock().await).send(&mut data).await;
+
+            return Ok(proto)
+        }
+    }
+    Err("not match proto".to_string())
+}
 
 pub async fn remote_stream_deal(mut frame_sender: mpsc::Sender<StreamCommand>, mut sender: mpsc::Sender<ControlCommand>) {
     let res = subscribe_stream(sender.clone()).await;

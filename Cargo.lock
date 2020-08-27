@@ -2644,6 +2644,7 @@ dependencies = [
  "futures 0.3.5",
  "futures-util",
  "utils",
+ "yaanhyy-noise",
  "yaanhyy-secio",
  "yaanhyy-yamux",
 ]
@@ -2668,7 +2669,6 @@ dependencies = [
  "static_assertions",
  "utils",
  "x25519-dalek",
- "yaanhyy-multistream-select",
  "yaanhyy-secio",
  "zeroize",
 ]
