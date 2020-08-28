@@ -108,11 +108,11 @@ impl<T: AsyncWrite  + AsyncRead + Send + Unpin + 'static> NoiseOutput<T> {
         let mut n = u16::from_be_bytes(len) as usize;
         let mut read_buf = vec![0u8; n];
         self.io.read_exact(&mut read_buf).await.unwrap();
-        println!("noise read buf_len:{},buf:{:?}", n, read_buf);
+        debug!("noise read buf_len:{},buf:{:?}", n, read_buf);
         let mut decrypt_buffer = vec![0u8; n];
         let res  = self.session.read_message(&read_buf, &mut decrypt_buffer);
         let len = res.unwrap();
-        println!("decrypt_buffer len:{}:{:?}", len, decrypt_buffer);
+        debug!("decrypt_buffer len:{}:{:?}", len, decrypt_buffer);
         return Ok(decrypt_buffer[..len].to_owned());
     }
 
@@ -121,9 +121,9 @@ impl<T: AsyncWrite  + AsyncRead + Send + Unpin + 'static> NoiseOutput<T> {
         let mut encrypt_buffer = vec![0u8; buf.len() + EXTRA_ENCRYPT_SPACE];
         let encrypt_len = self.session.write_message(&buf, &mut encrypt_buffer).unwrap();
 
-        println!("encrypt_buffer:{:?}", encrypt_buffer);
+        debug!("encrypt_buffer:{:?}", encrypt_buffer);
         let mut buf_len = (encrypt_len as u16).to_be_bytes();
-        println!("send buf_len:{:?}", buf_len);
+        debug!("send buf_len:{:?}", buf_len);
         let mut res = self.io.write_all(&buf_len).await;
         if let Ok(_) = res {
             res = self.io.write_all(&encrypt_buffer[..encrypt_len]).await;

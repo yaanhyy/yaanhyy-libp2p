@@ -279,3 +279,27 @@ fn ping_server_test() {
         }
     })
 }
+
+#[test]
+fn mplex_server_test() {
+    async_std::task::block_on(async move {
+        let listener = async_std::net::TcpListener::bind("127.0.0.1:5679").await.unwrap();
+        let mut connec = listener.accept().await.unwrap().0;
+        let res = listener_select_proto(connec.clone(), vec!["/mplex/6.7.0\n".to_string(), "/proto2\n".to_string()]).await;
+        match res {
+            Ok(protos) => {
+                println!("protocol:{:?}", protos);
+                let mut len_buf = [0u8; 1];
+                let mut varint_buf: Vec<u8> = Vec::new();
+                let mut len = 0;
+                loop {
+                    connec.read_exact(&mut len_buf).await.unwrap();
+                    len = len + 1;
+                    println!("rec index:{}:{:?}", len, len_buf);
+                }
+
+            },
+            Err(e) => println!("err:{}","not match protocol".to_string()),
+        }
+    });
+}

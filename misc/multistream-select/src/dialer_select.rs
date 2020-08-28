@@ -126,6 +126,8 @@ pub async fn dialer_select_proto_noise<T>(mut io: Arc<Mutex<NoiseOutput<T>>>, pr
         println!("noise rec proto:{:?}", proto);
         if return_proto.eq(&proto) {
             return Ok(proto)
+        } else {
+            println!("remote proto:{:?}", return_proto);
         }
     }
 
@@ -184,7 +186,8 @@ fn noise_client_test() {
                     let res = rt15_initiator(connec.clone(), state, config.dh_keys.into_identity(), IdentityExchange::Mutual).await;
                     if let Ok((remote, mut noise_io)) = res {
                         println!("send msg");
-                        let res = dialer_select_proto_noise(noise_io.clone(), vec!["/mplex/1.0.0\n".to_string()]).await;
+                        let res = dialer_select_proto_noise(noise_io.clone(), vec!["/mplex/6.7.0\n".to_string()]).await;
+                        println!("proto:{:?}", res);
                     }
                 }
             }

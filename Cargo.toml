@@ -30,5 +30,6 @@ members = [
     "protocol/noise",
     "protocol/kad",
     "misc/enr",
-    "misc/discv5"
+    "misc/discv5",
+    "muxers/mplex"
 ]
