@@ -16,7 +16,7 @@ pub(crate) const MAX_FRAME_SIZE: usize = 1024 * 1024;
 #[derive(Debug, Clone)]
 pub enum Elem {
     Open { substream_id: u32 },
-    Data { substream_id: u32, endpoint: Endpoint },
+    Data { substream_id: u32, endpoint: Endpoint, data: Vec<u8>},
     Close { substream_id: u32, endpoint: Endpoint },
     Reset { substream_id: u32, endpoint: Endpoint },
 }

@@ -14,3 +14,4 @@ utils = {path = "../../utils"}
 noise = { package="yaanhyy-noise", path = "../../protocol/noise" }
 secio = { package="yaanhyy-secio",  git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
 yamux = { package="yaanhyy-yamux", rev = 'dad5e6e2fdcec9b45a57d86e2f2cf0c0d9e4cf47', git = "https://github.com/yaanhyy/yaanhyy-yamux.git"}
+mplex =  { package="yaanhyy-mplex", path = "../../muxers/mplex" }

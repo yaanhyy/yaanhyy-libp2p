@@ -1158,18 +1158,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mplex"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "futures 0.3.5",
- "futures-util",
- "utils",
- "yaanhyy-noise",
- "yaanhyy-secio",
-]
-
-[[package]]
 name = "multihash"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1181,7 +1169,7 @@ dependencies = [
  "sha-1",
  "sha2",
  "sha3",
- "unsigned-varint",
+ "unsigned-varint 0.3.3",
 ]
 
 [[package]]
@@ -1299,7 +1287,7 @@ dependencies = [
  "percent-encoding",
  "serde",
  "static_assertions",
- "unsigned-varint",
+ "unsigned-varint 0.3.3",
  "url",
 ]
 
@@ -2267,6 +2255,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "unsigned-varint"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "669d776983b692a906c881fcd0cfb34271a48e197e4d6cb8df32b05bfc3d3fa5"
+
+[[package]]
 name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2290,8 +2284,9 @@ dependencies = [
  "chrono",
  "env_logger 0.6.2",
  "futures 0.3.5",
+ "futures-util",
  "log",
- "unsigned-varint",
+ "unsigned-varint 0.3.3",
 ]
 
 [[package]]
@@ -2530,7 +2525,7 @@ dependencies = [
  "simple_logger",
  "smallvec 1.4.0",
  "tokio",
- "unsigned-varint",
+ "unsigned-varint 0.3.3",
  "utils",
  "yaanhyy-identity",
  "yaanhyy-multistream-select",
@@ -2575,7 +2570,7 @@ dependencies = [
  "serde_derive",
  "sha2",
  "target_info",
- "unsigned-varint",
+ "unsigned-varint 0.3.3",
  "utils",
  "yaanhyy-identity",
  "yaanhyy-multistream-select",
@@ -2617,7 +2612,7 @@ dependencies = [
  "rand",
  "sha2",
  "smallvec 1.4.0",
- "unsigned-varint",
+ "unsigned-varint 0.3.3",
  "utils",
  "yaanhyy-identity",
  "yaanhyy-multistream-select",
@@ -2649,6 +2644,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "yaanhyy-mplex"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "futures 0.3.5",
+ "futures-util",
+ "unsigned-varint 0.4.0",
+ "utils",
+ "yaanhyy-noise",
+ "yaanhyy-secio",
+]
+
+[[package]]
 name = "yaanhyy-multistream-select"
 version = "0.1.0"
 dependencies = [
@@ -2656,6 +2664,7 @@ dependencies = [
  "futures 0.3.5",
  "futures-util",
  "utils",
+ "yaanhyy-mplex",
  "yaanhyy-noise",
  "yaanhyy-secio",
  "yaanhyy-yamux",

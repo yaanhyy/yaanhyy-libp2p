@@ -1,6 +1,44 @@
 use env_logger;
 use log::debug;
 use futures::prelude::*;
+use futures_util::io::{AsyncReadExt, AsyncWriteExt};
+use futures::{AsyncRead, AsyncWrite};
+
+pub fn get_varint_len(mut buf: Vec<u8>) -> u128 {
+    let mut len: u128 = 0;
+    let step: u128 = 7;
+    let mut len_item = None;
+    loop {
+        len_item = buf.pop();
+        if let Some(item) = len_item{
+            len = (item as u128) | len<<step;
+
+        } else {
+            break;
+        }
+    }
+    len
+}
+
+pub async fn get_conn_varint_var<S>(mut conn: S) -> u128
+    where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
+{
+    let mut len_buf = [0u8; 1];
+    let mut varint_buf: Vec<u8> = Vec::new();
+    loop {
+        conn.read_exact(&mut len_buf).await.unwrap();
+
+        if len_buf[0] & 0x80 == 0 {
+            varint_buf.push(len_buf[0]);
+            break;
+        } else {
+            varint_buf.push(len_buf[0]& 0x7f);
+        }
+    }
+    let len = get_varint_len(varint_buf);
+    len
+}
+
 
 pub async fn write_varint(socket: &mut (impl AsyncWrite + Unpin), len: usize)
                           -> Result<(), String>

@@ -1,5 +1,5 @@
 [package]
-name = "mplex"
+name = "yaanhyy-mplex"
 version = "0.1.0"
 authors = ["hongyuanyang <hongyuanyang@huobi.com>"]
 edition = "2018"
@@ -13,3 +13,4 @@ futures-util = "0.3.5"
 utils = {path = "../../utils"}
 noise = { package="yaanhyy-noise", path = "../../protocol/noise" }
 secio = { package="yaanhyy-secio",  git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
+unsigned-varint = "0.4"

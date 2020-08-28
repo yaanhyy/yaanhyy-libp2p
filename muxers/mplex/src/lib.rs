@@ -11,7 +11,8 @@ use futures::future::Either;
 use secio::identity::Keypair;
 use noise::io::NoiseOutput;
 use noise::handshake::{rt15_initiator, rt15_responder, IdentityExchange};
-
+use futures::{AsyncRead, AsyncWrite};
+use utils::get_conn_varint_var;
 pub mod codec;
 use codec::Endpoint;
 
@@ -45,6 +46,36 @@ pub struct Substream {
 
 
 
+pub fn split_header_from_package(mut input: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+    let mut varint_buf: Vec<u8> = Vec::new();
+    loop {
+        let item = input.remove(0);
+
+        if item & 0x80 == 0 {
+            varint_buf.push(item);
+            break;
+        } else {
+            varint_buf.push(item& 0x7f);
+        }
+    }
+    (input, varint_buf)
+}
+
+
+pub async fn receive_frame<T>(conn: Arc<Mutex<NoiseOutput<T>>>) -> ()
+    where T:  AsyncWrite + AsyncRead + Send + Unpin + 'static
+{
+    let mut data =  (*conn.lock().await).read().await.unwrap();
+
+
+    let (header,  data)  = unsigned_varint::decode::u128(&data).unwrap();
+    let (len,  data) = unsigned_varint::decode::u128(&data).unwrap();
+    let frame_type = header >>3;
+    println!("frame_type:{:?}", frame_type);
+
+}
+
+
 #[test]
 fn clinet_test() {
     async_std::task::block_on(async move {
@@ -60,11 +91,16 @@ fn server_test() {
         let mut connec = listener.accept().await.unwrap().0;
         let mut len_buf = [0u8; 1];
         let mut varint_buf: Vec<u8> = Vec::new();
-        let mut len = 0;
         loop {
-            connec.read_exact(&mut len_buf).await.unwrap();
-            len = len + 1;
-            println!("rec index:{}:{:?}", len, len_buf);
+            let header = get_conn_varint_var(connec.clone()).await;
+            println!("header:{}", header);
+            let len = get_conn_varint_var(connec.clone()).await;
+            println!("len:{}", len);
+            if len > 0 {
+                let mut read_buf = vec![0u8; len as usize];
+                connec.read_exact(&mut read_buf).await.unwrap();
+                println!("data:{:?}", read_buf);
+            }
         }
     });
 }

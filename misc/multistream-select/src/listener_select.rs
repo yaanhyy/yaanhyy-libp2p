@@ -19,6 +19,7 @@ use std::sync::{Arc};
 use async_std::sync::Mutex;
 pub use futures_util::io::{ReadHalf, WriteHalf};
 use noise::io::NoiseOutput;
+use utils::get_conn_varint_var;
 
 pub async fn period_send( sender: mpsc::Sender<ControlCommand>) {
     let res = open_stream(sender).await;
@@ -288,14 +289,25 @@ fn mplex_server_test() {
         let res = listener_select_proto(connec.clone(), vec!["/mplex/6.7.0\n".to_string(), "/proto2\n".to_string()]).await;
         match res {
             Ok(protos) => {
-                println!("protocol:{:?}", protos);
-                let mut len_buf = [0u8; 1];
-                let mut varint_buf: Vec<u8> = Vec::new();
-                let mut len = 0;
+//                println!("protocol:{:?}", protos);
+//                let mut len_buf = [0u8; 1];
+//                let mut varint_buf: Vec<u8> = Vec::new();
+//                let mut len = 0;
+//                loop {
+//                    connec.read_exact(&mut len_buf).await.unwrap();
+//                    len = len + 1;
+//                    println!("rec index:{}:{:?}", len, len_buf);
+//                }
                 loop {
-                    connec.read_exact(&mut len_buf).await.unwrap();
-                    len = len + 1;
-                    println!("rec index:{}:{:?}", len, len_buf);
+                    let header = get_conn_varint_var(connec.clone()).await;
+                    println!("header:{}", header);
+                    let len = get_conn_varint_var(connec.clone()).await;
+                    println!("len:{}", len);
+                    if len > 0 {
+                        let mut read_buf = vec![0u8; len as usize];
+                        connec.read_exact(&mut read_buf).await.unwrap();
+                        println!("data:{:?}", read_buf);
+                    }
                 }
 
             },
