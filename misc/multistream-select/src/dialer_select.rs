@@ -11,6 +11,7 @@ use crate::listener_select::remote_stream_deal;
 use secio::identity::Keypair;
 use noise::io::NoiseOutput;
 use noise::handshake::{rt15_initiator, rt15_responder, IdentityExchange};
+use mplex::MultiplexInner;
 
 pub async fn dialer_select_proto<S>(mut connec: S, protocols: Vec<String>, init_flag: bool) -> Result<Vec<u8>, String>
 where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
@@ -194,4 +195,38 @@ fn noise_client_test() {
         }
 
     })
+}
+
+#[test]
+fn mplex_client_test() {
+    async_std::task::block_on(async move {
+        let connec = async_std::net::TcpStream::connect("172.18.11.36:9000").await.unwrap();
+        let match_proto = dialer_select_proto(connec.clone(), vec!["/noise\n".to_string(),"/secio/1.0.0\n".to_string(), "/yamux/1.0.0\n".to_string()], true).await;
+        match match_proto {
+            Ok(protos) => {
+                let local_key = Keypair::generate_ed25519();
+                //let local_peer_id = PeerId::from(local_key.public());
+                let client_dh = noise::protocol::Keypair::new().into_authentic(&local_key).unwrap();
+                let config = noise::NoiseConfig::xx(client_dh);
+                let session = config.params.into_builder()
+                    .local_private_key(config.dh_keys.secret().as_ref())
+                    .build_initiator()
+                    .map_err(|_|"NoiseError::from".to_string());
+                if let Ok(state) = session {
+                    let res = rt15_initiator(connec.clone(), state, config.dh_keys.into_identity(), IdentityExchange::Mutual).await;
+                    if let Ok((remote, mut noise_io)) = res {
+                        println!("send msg");
+                        let res = dialer_select_proto_noise(noise_io.clone(), vec!["/mplex/6.7.0\n".to_string()]).await;
+                        open_stream();
+
+                    }
+                }
+                loop {
+
+                }
+
+            },
+            Err(e) => println!("err:{}","not match protocol".to_string()),
+        }
+    });
 }

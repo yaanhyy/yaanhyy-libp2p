@@ -14,7 +14,30 @@ use noise::handshake::{rt15_initiator, rt15_responder, IdentityExchange};
 use futures::{AsyncRead, AsyncWrite};
 use utils::get_conn_varint_var;
 pub mod codec;
-use codec::Endpoint;
+use codec::{Elem, Endpoint};
+
+
+// Struct shared throughout the implementation.
+pub struct MultiplexInner<C> {
+
+    // Underlying stream.
+    inner: Arc<Mutex<NoiseOutput<C>>>,
+    // The original configuration.
+//    config: MplexConfig,
+    // Buffer of elements pulled from the stream but not processed yet.
+//    buffer: Vec<codec::Elem>,
+    // List of Ids of opened substreams. Used to filter out messages that don't belong to any
+    // substream. Note that this is handled exclusively by `next_match`.
+    // The `Endpoint` value denotes who initiated the substream from our point of view
+    // (see note [StreamId]).
+  //  opened_substreams: FnvHashSet<(u32, Endpoint)>,
+    // Id of the next outgoing substream.
+    next_outbound_stream_id: u32,
+
+    /// If true, the connection has been shut down. We need to be careful not to accidentally
+    /// call `Sink::poll_complete` or `Sink::start_send` after `Sink::close`.
+    is_shutdown: bool,
+}
 
 /// Active attempt to open an outbound substream.
 pub struct OutboundSubstream {
@@ -62,19 +85,37 @@ pub fn split_header_from_package(mut input: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
 }
 
 
-pub async fn receive_frame<T>(conn: Arc<Mutex<NoiseOutput<T>>>) -> ()
-    where T:  AsyncWrite + AsyncRead + Send + Unpin + 'static
+pub async fn receive_frame<T>(conn: Arc<Mutex<NoiseOutput<T>>>) -> Result<Elem, String>
+where T:  AsyncWrite + AsyncRead + Send + Unpin + 'static
 {
     let mut data =  (*conn.lock().await).read().await.unwrap();
 
 
     let (header,  data)  = unsigned_varint::decode::u128(&data).unwrap();
     let (len,  data) = unsigned_varint::decode::u128(&data).unwrap();
-    let frame_type = header >>3;
+    let frame_type = header & 0x3;
+    let substream_id = (header >>3) as u32;
     println!("frame_type:{:?}", frame_type);
-
+    let out = match frame_type {
+        0 => Elem::Open { substream_id },
+        1 => Elem::Data { substream_id, endpoint: Endpoint::Listener, data: data.to_vec()},
+        2 => Elem::Data { substream_id, endpoint: Endpoint::Dialer, data: data.to_vec() },
+        3 => Elem::Close { substream_id, endpoint: Endpoint::Listener },
+        4 => Elem::Close { substream_id, endpoint: Endpoint::Dialer },
+        5 => Elem::Reset { substream_id, endpoint: Endpoint::Listener },
+        6 => Elem::Reset { substream_id, endpoint: Endpoint::Dialer },
+        _ => {
+            let msg = format!("Invalid mplex header value 0x{:x}", header);
+            return Err(format!("IoErrorKind::InvalidData, msg:{:?}", msg));
+        },
+    };
+    println!("Elem:{:?}", out);
+    Ok(out)
 }
 
+pub async fn open_stream() {
+
+}
 
 #[test]
 fn clinet_test() {
