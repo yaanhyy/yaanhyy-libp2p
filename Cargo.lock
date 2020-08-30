@@ -2650,6 +2650,7 @@ dependencies = [
  "async-std",
  "futures 0.3.5",
  "futures-util",
+ "log",
  "unsigned-varint 0.4.0",
  "utils",
  "yaanhyy-noise",

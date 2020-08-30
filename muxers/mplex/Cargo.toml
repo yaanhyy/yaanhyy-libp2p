@@ -14,3 +14,4 @@ utils = {path = "../../utils"}
 noise = { package="yaanhyy-noise", path = "../../protocol/noise" }
 secio = { package="yaanhyy-secio",  git = "https://github.com/yaanhyy/yaanhyy-secio.git"}
 unsigned-varint = "0.4"
+log = "0.4"

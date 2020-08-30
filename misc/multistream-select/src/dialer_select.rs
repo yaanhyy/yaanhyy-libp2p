@@ -12,7 +12,8 @@ use secio::identity::Keypair;
 use noise::io::NoiseOutput;
 use noise::handshake::{rt15_initiator, rt15_responder, IdentityExchange};
 use mplex::MultiplexInner;
-use mplex::{send_frame, receive_frame};
+use mplex::{send_frame, receive_frame, send_tcp_frame};
+use mplex::codec::{Elem, Endpoint};
 
 pub async fn dialer_select_proto<S>(mut connec: S, protocols: Vec<String>, init_flag: bool) -> Result<Vec<u8>, String>
 where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
@@ -141,6 +142,25 @@ pub async fn dialer_select_proto_yamux() {
 
 }
 
+
+#[test]
+fn clinet_test() {
+    async_std::task::block_on(async move {
+        let connec = async_std::net::TcpStream::connect("127.0.0.1:8981").await.unwrap();
+        let match_proto = dialer_select_proto(connec.clone(), vec!["/mplex/6.7.0\n".to_string()], true).await;
+        if match_proto.is_ok() {
+            let elem = Elem::Open { substream_id: 0 };
+            send_tcp_frame(connec.clone(), elem).await;
+            let elem = Elem::Data { substream_id: 0, endpoint: Endpoint::Dialer, data: "hello".to_string().into_bytes() };
+            send_tcp_frame(connec.clone(), elem).await;
+            loop {
+
+            }
+        }
+    });
+}
+
+
 #[test]
 fn ping_client_test() {
     init_log("debug");
@@ -228,7 +248,7 @@ fn mplex_client_test() {
                                 if (elem.is_open_msg() || elem.is_close_or_reset_msg()) {
 
                                 } else {
-                                    if() {
+                                    if true{
                                         send_frame(noise_io.clone(), elem).await;
                                     }
                                 }
