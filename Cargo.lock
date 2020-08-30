@@ -2663,6 +2663,7 @@ dependencies = [
  "async-std",
  "futures 0.3.5",
  "futures-util",
+ "log",
  "utils",
  "yaanhyy-mplex",
  "yaanhyy-noise",

@@ -15,8 +15,8 @@ use futures::{AsyncRead, AsyncWrite};
 use utils::get_conn_varint_var;
 pub mod codec;
 use codec::{Elem, Endpoint};
-
-
+use unsigned_varint::{encode};
+use log::trace;
 // Struct shared throughout the implementation.
 pub struct MultiplexInner<C> {
 
@@ -99,7 +99,7 @@ where T:  AsyncWrite + AsyncRead + Send + Unpin + 'static
     let out = match frame_type {
         0 => Elem::Open { substream_id },
         1 => Elem::Data { substream_id, endpoint: Endpoint::Listener, data: data.to_vec()},
-        2 => Elem::Data { substream_id, endpoint: Endpoint::Dialer, data: data.to_vec() },
+        2 => Elem::Data { substream_id, endpoint: Endpoint::Listener, data: data.to_vec() },
         3 => Elem::Close { substream_id, endpoint: Endpoint::Listener },
         4 => Elem::Close { substream_id, endpoint: Endpoint::Dialer },
         5 => Elem::Reset { substream_id, endpoint: Endpoint::Listener },
@@ -109,8 +109,51 @@ where T:  AsyncWrite + AsyncRead + Send + Unpin + 'static
             return Err(format!("IoErrorKind::InvalidData, msg:{:?}", msg));
         },
     };
-    println!("Elem:{:?}", out);
     Ok(out)
+}
+
+
+pub async fn send_frame<T>(conn: Arc<Mutex<NoiseOutput<T>>>, elem: Elem) -> Result<(), String>
+    where T:  AsyncWrite + AsyncRead + Send + Unpin + 'static
+{
+    let (header, mut data) = match elem {
+        Elem::Open { substream_id } => {
+            (u64::from(substream_id) << 3, Vec::new())
+        },
+        Elem::Data { substream_id, endpoint: Endpoint::Listener, data } => {
+            (u64::from(substream_id) << 3 | 1, data)
+        },
+        Elem::Data { substream_id, endpoint: Endpoint::Dialer, data } => {
+            (u64::from(substream_id) << 3 | 2, data)
+        },
+        Elem::Close { substream_id, endpoint: Endpoint::Listener } => {
+            (u64::from(substream_id) << 3 | 3, Vec::new())
+        },
+        Elem::Close { substream_id, endpoint: Endpoint::Dialer } => {
+            (u64::from(substream_id) << 3 | 4, Vec::new())
+        },
+        Elem::Reset { substream_id, endpoint: Endpoint::Listener } => {
+            (u64::from(substream_id) << 3 | 5, Vec::new())
+        },
+        Elem::Reset { substream_id, endpoint: Endpoint::Dialer } => {
+            (u64::from(substream_id) << 3 | 6, Vec::new())
+        },
+    };
+
+    let mut send_frame = Vec::new();
+    let mut header_buf = encode::u64_buffer();
+    trace!("header:{}", header);
+    let header_bytes = encode::u64(header, &mut header_buf);
+
+    let data_len = data.len();
+    let mut data_buf = encode::usize_buffer();
+    let data_len_bytes = encode::usize(data_len, &mut data_buf);
+    send_frame.append(& mut header_bytes.to_vec());
+    send_frame.append(& mut  data_len_bytes.to_vec());
+    send_frame.append(& mut data);
+    println!("send_frame{:?}", send_frame);
+    (*conn.lock().await).send(& mut send_frame).await.unwrap();
+    Ok(())
 }
 
 pub async fn open_stream() {

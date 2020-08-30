@@ -1,5 +1,5 @@
 use futures::prelude::*;
-use utils::init_log;
+use utils::{init_log, get_conn_varint_var};
 use crate::protocol::{get_varint_len, split_length_from_package, MSG_MULTISTREAM_1_0, upgrade_secio_protocol, get_conn_varint_len};
 use yamux::session::{Mode, ControlCommand, StreamCommand};
 use std::sync::{Arc};
@@ -12,6 +12,7 @@ use secio::identity::Keypair;
 use noise::io::NoiseOutput;
 use noise::handshake::{rt15_initiator, rt15_responder, IdentityExchange};
 use mplex::MultiplexInner;
+use mplex::{send_frame, receive_frame};
 
 pub async fn dialer_select_proto<S>(mut connec: S, protocols: Vec<String>, init_flag: bool) -> Result<Vec<u8>, String>
 where S: AsyncRead + AsyncWrite + Send + Unpin + 'static + std::clone::Clone
@@ -189,6 +190,7 @@ fn noise_client_test() {
                         println!("send msg");
                         let res = dialer_select_proto_noise(noise_io.clone(), vec!["/mplex/6.7.0\n".to_string()]).await;
                         println!("proto:{:?}", res);
+
                     }
                 }
             }
@@ -217,7 +219,23 @@ fn mplex_client_test() {
                     if let Ok((remote, mut noise_io)) = res {
                         println!("send msg");
                         let res = dialer_select_proto_noise(noise_io.clone(), vec!["/mplex/6.7.0\n".to_string()]).await;
-                        open_stream();
+                        loop {
+                            let res =  receive_frame(noise_io.clone()).await;
+
+                            if res.is_ok() {
+                                println!("res:{:?}", res);
+                                let elem = res.unwrap();
+                                if (elem.is_open_msg() || elem.is_close_or_reset_msg()) {
+
+                                } else {
+                                    if() {
+                                        send_frame(noise_io.clone(), elem).await;
+                                    }
+                                }
+
+                            }
+                        }
+                        //open_stream();
 
                     }
                 }
