@@ -17,20 +17,46 @@ pub mod codec;
 use codec::{Elem, Endpoint};
 use unsigned_varint::{encode};
 use log::trace;
+
+/// Configuration for the multiplexer.
+#[derive(Debug, Clone)]
+pub struct MplexConfig {
+    /// Maximum number of simultaneously-open substreams.
+    pub max_substreams: usize,
+    /// Maximum number of elements in the internal buffer.
+    pub max_buffer_len: usize,
+    /// Behaviour when the buffer size limit is reached.
+    //max_buffer_behaviour: MaxBufferBehaviour,
+    /// When sending data, split it into frames whose maximum size is this value
+    /// (max 1MByte, as per the Mplex spec).
+    pub split_send_size: usize,
+}
+
+impl Default for MplexConfig {
+    fn default() -> MplexConfig {
+        MplexConfig {
+            max_substreams: 128,
+            max_buffer_len: 4096,
+          //  max_buffer_behaviour: MaxBufferBehaviour::CloseAll,
+            split_send_size: 1024,
+        }
+    }
+}
+
 // Struct shared throughout the implementation.
 pub struct MultiplexInner<C> {
 
     // Underlying stream.
     inner: Arc<Mutex<NoiseOutput<C>>>,
     // The original configuration.
-//    config: MplexConfig,
+    config: MplexConfig,
     // Buffer of elements pulled from the stream but not processed yet.
-//    buffer: Vec<codec::Elem>,
+    buffer: Vec<codec::Elem>,
     // List of Ids of opened substreams. Used to filter out messages that don't belong to any
     // substream. Note that this is handled exclusively by `next_match`.
     // The `Endpoint` value denotes who initiated the substream from our point of view
     // (see note [StreamId]).
-  //  opened_substreams: FnvHashSet<(u32, Endpoint)>,
+    opened_substreams: HashMap<u32, Endpoint>,
     // Id of the next outgoing substream.
     next_outbound_stream_id: u32,
 
@@ -95,7 +121,7 @@ where T:  AsyncWrite + AsyncRead + Send + Unpin + 'static
     let (len,  data) = unsigned_varint::decode::u128(&data).unwrap();
     let frame_type = header & 0x3;
     let substream_id = (header >>3) as u32;
-    println!("frame_type:{:?}", frame_type);
+    println!("frame_type:{:?}, len:{:?}", frame_type, len);
     let out = match frame_type {
         0 => Elem::Open { substream_id },
         1 => Elem::Data { substream_id, endpoint: Endpoint::Listener, data: data.to_vec()},
