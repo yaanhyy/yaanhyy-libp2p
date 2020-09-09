@@ -244,12 +244,12 @@ fn mplex_client_test() {
 
                             if res.is_ok() {
                                 println!("res:{:?}", res);
-                                let elem = res.unwrap();
-                                if (elem.is_open_msg() || elem.is_close_or_reset_msg()) {
-
-                                } else {
-                                    if true{
-                                        send_frame(noise_io.clone(), elem).await;
+                                let mut  elems = res.unwrap();
+                                for elem in elems {
+                                    if (elem.is_open_msg() || elem.is_close_or_reset_msg()) {} else {
+                                        if true {
+                                            send_frame(noise_io.clone(), elem).await;
+                                        }
                                     }
                                 }
 
