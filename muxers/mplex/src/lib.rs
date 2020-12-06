@@ -121,7 +121,7 @@ where T:  AsyncWrite + AsyncRead + Send + Unpin + 'static
         let (len, mut data_body) = unsigned_varint::decode::u128(&data_length).unwrap();
         let frame_type = header & 0x3;
         let substream_id = (header >> 3) as u32;
-        println!("frame_type:{:?}, len:{:?}", frame_type, len);
+        trace!("frame_type:{:?}, len:{:?}", frame_type, len);
         let mut data_body = data_body.to_vec();
         data = data_body.drain((len as usize)..).collect();
         let elem = match frame_type {
@@ -181,7 +181,7 @@ pub async fn send_frame<T>(conn: Arc<Mutex<NoiseOutput<T>>>, elem: Elem) -> Resu
     send_frame.append(& mut header_bytes.to_vec());
     send_frame.append(& mut  data_len_bytes.to_vec());
     send_frame.append(& mut data);
-    println!("send_frame{:?}", send_frame);
+    trace!("send_frame{:?}", send_frame);
     (*conn.lock().await).send(& mut send_frame).await.unwrap();
     Ok(())
 }
@@ -224,7 +224,7 @@ pub async fn send_tcp_frame<T>(mut conn: T, elem: Elem) -> Result<(), String>
     send_frame.append(& mut header_bytes.to_vec());
     send_frame.append(& mut  data_len_bytes.to_vec());
     send_frame.append(& mut data);
-    println!("send_frame{:?}", send_frame);
+    trace!("send_frame{:?}", send_frame);
     conn.write_all(&send_frame).await;
     Ok(())
 }
